@@ -1,0 +1,9 @@
+/* This file should be processed by Tailwind CSS via PostCSS, not directly by the browser */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional custom styling */
+body {
+  @apply bg-gray-50 text-gray-900;
+}
