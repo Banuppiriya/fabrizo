@@ -105,7 +105,7 @@ const Login = () => {
         {loginSuccess && (
           <div className="text-center mt-4">
             <button
-              onClick={() => navigate('/home')}
+              onClick={() => navigate('/')}
               className="text-indigo-600 font-medium hover:underline"
             >
               Continue to Home

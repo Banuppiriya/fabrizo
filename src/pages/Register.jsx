@@ -122,18 +122,7 @@ const Register = () => {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
-          <select
-            name="role"
-            value={form.role}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
-          >
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-            <option value="tailor">Tailor</option>
-          </select>
-
+          
           <button
             type="submit"
             disabled={loading}
