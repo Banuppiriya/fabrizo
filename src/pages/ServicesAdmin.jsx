@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { adminApi } from '../api';
+import axios from 'axios';
+import { theme } from '../theme';
+import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 
 function ServicesAdmin() {
   const [services, setServices] = useState([]);
@@ -10,13 +12,11 @@ function ServicesAdmin() {
 
   const load = async () => {
     setLoading(true);
-    setError(null);
     try {
-      const data = await adminApi.getServices();
+      const { data } = await axios.get('/service');
       setServices(data);
     } catch (err) {
       setError('Failed to load services.');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -26,23 +26,22 @@ function ServicesAdmin() {
     load();
   }, []);
 
-  const submit = async () => {
+  const submit = async (e) => {
+    e.preventDefault();
     setLoading(true);
     setError(null);
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => v != null && fd.append(k, v));
       if (editing) {
-        await adminApi.updateService(editing._id, fd);
+        await axios.put(`/service/${editing._id}`, fd);
       } else {
-        await adminApi.createService(fd);
+        await axios.post('/service', fd);
       }
-      setForm({ title: '', description: '', price: '', category: '', file: null });
-      setEditing(null);
+      resetForm();
       await load();
     } catch (err) {
       setError('Failed to save service.');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -51,112 +50,82 @@ function ServicesAdmin() {
   const remove = async (id) => {
     if (!window.confirm('Delete service?')) return;
     setLoading(true);
-    setError(null);
     try {
-      await adminApi.deleteService(id);
+      await axios.delete(`/services/${id}`);
       await load();
     } catch (err) {
       setError('Failed to delete service.');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  const resetForm = () => {
+    setForm({ title: '', description: '', price: '', category: '', file: null });
+    setEditing(null);
+    setError(null);
+  };
+
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">Manage Services</h2>
-
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>
-      )}
-
-      <div className="space-y-2 mb-6 max-w-md">
-        {['title', 'description', 'price', 'category'].map(f => (
-          <input
-            key={f}
-            value={form[f]}
-            placeholder={f}
-            onChange={e => setForm({ ...form, [f]: e.target.value })}
-            className="w-full border px-3 py-2 rounded"
-            disabled={loading}
-          />
-        ))}
-        <input
-          key={form.file ? form.file.name : 'file-input'}
-          type="file"
-          onChange={e => setForm({ ...form, file: e.target.files[0] })}
-          disabled={loading}
-        />
-        {form.file && (
-          <img
-            src={URL.createObjectURL(form.file)}
-            alt="Preview"
-            className="mt-2 w-32 h-32 object-cover rounded"
-          />
-        )}
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={submit}
-            disabled={
-              loading || !form.title || !form.description || !form.price || !form.category
-            }
-            className="px-4 py-2 bg-indigo-600 text-white disabled:opacity-50 rounded"
-          >
-            {loading ? (editing ? 'Updating...' : 'Creating...') : editing ? 'Update Service' : 'Create Service'}
-          </button>
-          {editing && (
-            <button
-              onClick={() => {
-                setEditing(null);
-                setForm({ title: '', description: '', price: '', category: '', file: null });
-                setError(null);
-              }}
-              disabled={loading}
-              className="px-4 py-2 bg-gray-300 rounded"
-            >
-              Cancel
-            </button>
-          )}
+      <h1 style={{ color: theme.colors.primary, fontFamily: theme.fonts.heading }} className="text-3xl font-bold mb-6">
+        Manage Services
+      </h1>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1">
+          <ServiceForm form={form} setForm={setForm} editing={editing} loading={loading} submit={submit} resetForm={resetForm} />
+        </div>
+        <div className="lg:col-span-2">
+          {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>}
+          <ServiceList services={services} setForm={setForm} setEditing={setEditing} remove={remove} loading={loading} />
         </div>
       </div>
-
-      {loading && !services.length && (
-        <div>Loading services...</div>
-      )}
-
-      <ul className="space-y-4 max-w-md">
-        {services.map(s => (
-          <li key={s._id} className="border p-4 rounded flex justify-between items-center">
-            <div>
-              <h3 className="font-semibold">{s.title}</h3>
-              <p>${s.price} — {s.category}</p>
-            </div>
-            <div className="space-x-2">
-              <button
-                onClick={() => {
-                  setEditing(s);
-                  setForm({ ...s, file: null });
-                  setError(null);
-                }}
-                disabled={loading}
-                className="px-3 py-1 bg-yellow-400 rounded"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => remove(s._id)}
-                disabled={loading}
-                className="px-3 py-1 text-red-600 rounded border border-red-600"
-              >
-                Delete
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
+
+const ServiceForm = ({ form, setForm, editing, loading, submit, resetForm }) => (
+  <form onSubmit={submit} className="bg-white p-6 rounded-lg shadow-lg space-y-4">
+    <h2 style={{ color: theme.colors.text, fontFamily: theme.fonts.heading }} className="text-xl font-semibold">
+      {editing ? 'Edit Service' : 'Add New Service'}
+    </h2>
+    <input value={form.title} placeholder="Title" onChange={e => setForm({ ...form, title: e.target.value })} className="w-full border p-2 rounded" disabled={loading} />
+    <textarea value={form.description} placeholder="Description" onChange={e => setForm({ ...form, description: e.target.value })} className="w-full border p-2 rounded" disabled={loading} />
+    <input value={form.price} placeholder="Price" type="number" onChange={e => setForm({ ...form, price: e.target.value })} className="w-full border p-2 rounded" disabled={loading} />
+    <input value={form.category} placeholder="Category" onChange={e => setForm({ ...form, category: e.target.value })} className="w-full border p-2 rounded" disabled={loading} />
+    <input type="file" onChange={e => setForm({ ...form, file: e.target.files[0] })} disabled={loading} />
+    {form.file && <img src={URL.createObjectURL(form.file)} alt="Preview" className="mt-2 w-32 h-32 object-cover rounded" />}
+    <div className="flex space-x-2">
+      <button type="submit" disabled={loading || !form.title} style={{ backgroundColor: theme.colors.primary, color: 'white' }} className="px-4 py-2 rounded disabled:opacity-50">
+        {loading ? 'Saving...' : (editing ? 'Update' : 'Create')}
+      </button>
+      {editing && <button type="button" onClick={resetForm} className="px-4 py-2 bg-gray-300 rounded">Cancel</button>}
+    </div>
+  </form>
+);
+
+const ServiceList = ({ services, setForm, setEditing, remove, loading }) => (
+  <div className="bg-white p-6 rounded-lg shadow-lg">
+    {loading && !services.length && <p>Loading services...</p>}
+    <ul className="space-y-4">
+      {services.map(s => (
+        <li key={s._id} className="border p-4 rounded-lg flex justify-between items-center">
+          <div>
+            <h3 className="font-semibold">{s.title}</h3>
+            <p>${s.price} — {s.category}</p>
+          </div>
+          <div className="space-x-2">
+            <button onClick={() => { setEditing(s); setForm({ ...s, file: null }); }} disabled={loading} className="p-2 text-yellow-500 hover:text-yellow-700">
+              <FaEdit />
+            </button>
+            <button onClick={() => remove(s._id)} disabled={loading} className="p-2 text-red-500 hover:text-red-700">
+              <FaTrash />
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
 
 export default ServicesAdmin;

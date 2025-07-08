@@ -1,5 +1,5 @@
-// Settings.jsx
 import React, { useState } from 'react';
+import theme from '../theme'; // Corrected: Removed curly braces
 
 const Settings = () => {
   const [formData, setFormData] = useState({
@@ -21,109 +21,94 @@ const Settings = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
     if (formData.newPassword !== formData.confirmNewPassword) {
       alert('New passwords do not match!');
       return;
     }
-
-    // TODO: Add your save logic here (API calls, etc.)
     alert('Settings saved successfully!');
+    // In a real application, you'd send this data to your backend API
+    console.log('Form data submitted:', formData);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10 px-4 md:px-8 flex justify-center items-start">
-      <div className="max-w-lg w-full bg-white p-8 rounded-xl shadow-md">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">Settings</h2>
+    <div style={{ backgroundColor: theme.colors.background }} className="min-h-screen py-10 px-4 md:px-8 flex justify-center items-start">
+      <div className="max-w-lg w-full bg-white p-8 rounded-xl shadow-lg">
+        <h2 style={{ color: theme.colors.primary, fontFamily: theme.fonts.heading }} className="text-3xl font-bold mb-6 text-center">
+          Settings
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Username */}
-          <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-              Username
-            </label>
-            <input
-              type="text"
-              name="username"
-              id="username"
-              value={formData.username}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              required
-            />
-          </div>
+          <SettingsSection title="Account Information">
+            <InputField label="Username" name="username" value={formData.username} onChange={handleChange} />
+            <InputField label="Email Address" name="email" type="email" value={formData.email} onChange={handleChange} />
+          </SettingsSection>
 
-          {/* Email */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              name="email"
-              id="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              required
-            />
-          </div>
+          <SettingsSection title="Change Password">
+            <InputField name="currentPassword" type="password" placeholder="Current password" value={formData.currentPassword} onChange={handleChange} />
+            <InputField name="newPassword" type="password" placeholder="New password" value={formData.newPassword} onChange={handleChange} />
+            <InputField name="confirmNewPassword" type="password" placeholder="Confirm new password" value={formData.confirmNewPassword} onChange={handleChange} />
+          </SettingsSection>
 
-          {/* Password Section */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Change Password</label>
-            <input
-              type="password"
-              name="currentPassword"
-              placeholder="Current password"
-              value={formData.currentPassword}
-              onChange={handleChange}
-              className="w-full mb-3 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <input
-              type="password"
-              name="newPassword"
-              placeholder="New password"
-              value={formData.newPassword}
-              onChange={handleChange}
-              className="w-full mb-3 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <input
-              type="password"
-              name="confirmNewPassword"
-              placeholder="Confirm new password"
-              value={formData.confirmNewPassword}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+          <SettingsSection title="Notifications">
+            <CheckboxField label="Enable email notifications" name="notifications" checked={formData.notifications} onChange={handleChange} />
+          </SettingsSection>
 
-          {/* Notifications */}
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="notifications"
-              name="notifications"
-              checked={formData.notifications}
-              onChange={handleChange}
-              className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-            />
-            <label htmlFor="notifications" className="text-gray-700 font-medium">
-              Enable email notifications
-            </label>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Save Settings
-          </button>
+          <Button type="submit">Save Settings</Button>
         </form>
       </div>
     </div>
   );
 };
+
+const SettingsSection = ({ title, children }) => (
+  <div>
+    <h3 style={{ color: theme.colors.text, borderBottom: `1px solid ${theme.colors.border}` }} className="text-lg font-semibold mb-4 pb-2">
+      {title}
+    </h3>
+    <div className="space-y-4">{children}</div>
+  </div>
+);
+
+const InputField = ({ label, ...props }) => (
+  <div>
+    {label && <label style={{ color: theme.colors.textSecondary }} className="block text-sm font-medium mb-1">{label}</label>}
+    <input
+      {...props}
+      style={{
+        borderColor: theme.colors.border,
+        borderRadius: theme.borderRadius,
+      }}
+      className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2"
+    />
+  </div>
+);
+
+const CheckboxField = ({ label, ...props }) => (
+  <div className="flex items-center space-x-3">
+    <input
+      type="checkbox"
+      {...props}
+      style={{ accentColor: theme.colors.primary }}
+      className="h-5 w-5 border-gray-300 rounded"
+    />
+    <label style={{ color: theme.colors.text }} className="font-medium">
+      {label}
+    </label>
+  </div>
+);
+
+const Button = ({ children, ...props }) => (
+  <button
+    {...props}
+    style={{
+      backgroundColor: theme.colors.primary,
+      color: theme.colors.white,
+      borderRadius: theme.borderRadius,
+    }}
+    className="w-full py-3 font-semibold rounded-md shadow-md hover:opacity-90 transition"
+  >
+    {children}
+  </button>
+);
 
 export default Settings;

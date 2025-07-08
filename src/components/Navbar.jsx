@@ -1,244 +1,226 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+// src/components/Navbar.jsx
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
+import { Home, LogIn, UserPlus, User, LockOpen, Menu, X, ShoppingCart, Info, Mail } from 'lucide-react';
+import logo from '../assets/logo.gif';
+import DarkModeToggle from './DarkModeToggle'; // Assuming this component exists and handles dark mode
 
 const Navbar = () => {
+  const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const token = localStorage.getItem('token');
+  
+  let isAuthenticated = false;
+  let userRole = null;
 
-  // Determine active section based on current path
-  const [section, setSection] = useState('home');
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const notificationBadgeCount = 3; // example count
-
-  const notifRef = useRef(null);
-  const userMenuRef = useRef(null);
-
-  useEffect(() => {
-    // Update active section when route changes
-    const path = location.pathname.replace('/', '');
-    setSection(path || 'home');
-  }, [location]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notifRef.current && !notifRef.current.contains(event.target)) {
-        setNotifOpen(false);
+  if (token) {
+    try {
+      const decodedToken = jwtDecode(token);
+      const currentTime = Date.now() / 1000; // Current time in seconds
+      if (decodedToken.exp > currentTime) {
+        isAuthenticated = true;
+        userRole = decodedToken.role;
       }
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
-        setUserMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    } catch (error) {
+      console.error('Invalid token:', error);
+      // Optionally clear token if invalid to prevent persistent issues
+      localStorage.removeItem('token');
+    }
+  }
 
-  const showSection = (name) => {
-    setSection(name);
-    setMobileMenuOpen(false);
-    setNotifOpen(false);
-    setUserMenuOpen(false);
-
-    // Navigate to the corresponding route
-    navigate(name === 'home' ? '/' : `/${name}`);
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
   };
 
+  const handleServicesClick = (e) => {
+    e.preventDefault();
+    if (location.pathname !== '/') {
+      navigate('/#services'); // Navigate to home and then scroll
+    } else {
+      const servicesSection = document.getElementById('services');
+      if (servicesSection) {
+        servicesSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+    setIsOpen(false); // Close mobile menu after click
+  };
+
+  const handleContactClick = (e) => {
+    e.preventDefault();
+    if (location.pathname !== '/') {
+      navigate('/#contact'); // Navigate to home and then scroll
+    } else {
+      const contactSection = document.getElementById('contact');
+      if (contactSection) {
+        contactSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+    setIsOpen(false); // Close mobile menu after click
+  };
+
+  // Define navigation links for all users
+  const navLinks = [
+    { to: '/', text: 'Home', icon: <Home size={18} /> },
+    // Removed direct contact link here, as it's handled by handleContactClick to scroll
+  ];
+
+  // Define links visible only when authenticated, filtered by role
+  const authenticatedLinks = [
+    { to: '/profile', text: 'Profile', icon: <User size={18} /> },
+    { to: '/orders', text: 'Orders', icon: <ShoppingCart size={18} /> },
+    userRole === 'admin' && { to: '/admin', text: 'Admin', icon: <LockOpen size={18} /> },
+    userRole === 'tailor' && { to: '/tailor', text: 'Dashboard', icon: <LockOpen size={18} /> },
+  ].filter(Boolean); // .filter(Boolean) removes any false/null values from the array
+
+  // Define links visible only when unauthenticated
+  const unauthenticatedLinks = [
+    { to: '/login', text: 'Login', icon: <LogIn size={18} /> },
+    { to: '/register', text: 'Register', icon: <UserPlus size={18} /> },
+  ];
+
   return (
-    <nav className="bg-white/90 backdrop-blur-sm border-b border-gray-200 fixed w-full z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <i className="fas fa-cut text-2xl text-indigo-600 mr-3"></i>
-            <img
-              src="/src/assets/logo.gif"
-              alt="Fabrizo Logo"
-              className="h-25 w-25 rounded-full mr-2"
-            />
-          </div>
-
-          {/* Desktop nav links */}
-          <div className="hidden md:flex items-center space-x-8">
-            {['home', 'services', 'customizer', 'orders'].map((item) => (
-              <button
-                key={item}
-                onClick={() => showSection(item)}
-                className={`nav-link text-gray-700 hover:text-indigo-600 transition-colors ${
-                  section === item ? 'font-semibold text-indigo-600' : ''
-                }`}
+    <nav className="bg-gray-800 p-4 text-white shadow-lg sticky top-0 z-50"> {/* Changed bg-gray-300 to bg-gray-800 for better contrast against white text */}
+      <div className="container mx-auto flex justify-between items-center">
+        <Link to="/" className="flex items-center space-x-2">
+          <img src={logo} alt="Logo" className="h-10 w-10 rounded-full" />
+          <span className="text-xl font-semibold text-white">Fabrizo</span> {/* Ensured text-white for logo name */}
+        </Link>
+        
+        {/* Desktop Navigation */}
+        <ul className="hidden md:flex items-center space-x-6">
+          {navLinks.map(link => (
+            <li key={link.to}>
+              {/* Using Link for internal routes */}
+              <Link
+                to={link.to}
+                onClick={link.onClick ? link.onClick : () => setIsOpen(false)}
+                className="flex items-center space-x-1 text-white hover:text-gray-300 transition-colors"
               >
-                {item.charAt(0).toUpperCase() +
-                  item
-                    .slice(1)
-                    .replace(/customizer/, 'Design Customizer')
-                    .replace(/orders/, 'Track Orders')}
-              </button>
-            ))}
-          </div>
+                {link.icon}
+                <span>{link.text}</span>
+              </Link>
+            </li>
+          ))}
+          {/* Services link - scrolls to section */}
+          <li>
+            <a href="/#services" onClick={handleServicesClick} className="flex items-center space-x-1 text-white hover:text-gray-300 transition-colors cursor-pointer">
+              <Info size={18} />
+              <span>Services</span>
+            </a>
+          </li>
+          {/* Contact link - scrolls to section */}
+          <li>
+            <a href="/#contact" onClick={handleContactClick} className="flex items-center space-x-1 text-white hover:text-gray-300 transition-colors cursor-pointer">
+              <Mail size={18} />
+              <span>Contact</span>
+            </a>
+          </li>
+          
+          {isAuthenticated ? (
+            <>
+              {authenticatedLinks.map(link => (
+                <li key={link.to}>
+                  <Link to={link.to} className="flex items-center space-x-1 text-white hover:text-gray-300 transition-colors">
+                    {link.icon}
+                    <span>{link.text}</span>
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <button onClick={handleLogout} className="flex items-center space-x-1 text-white hover:text-gray-300 transition-colors">
+                  <LogIn className="rotate-180" size={18} /> {/* Rotated for logout icon */}
+                  <span>Logout</span>
+                </button>
+              </li>
+            </>
+          ) : (
+            unauthenticatedLinks.map(link => (
+              <li key={link.to}>
+                <Link to={link.to} className="flex items-center space-x-1 text-white hover:text-gray-300 transition-colors">
+                  {link.icon}
+                  <span>{link.text}</span>
+                </Link>
+              </li>
+            ))
+          )}
+          <li>
+             {/* DarkModeToggle should ideally handle its own styling based on the global theme context */}
+            <DarkModeToggle /> 
+          </li>
+        </ul>
 
-          <div className="flex items-center space-x-4">
-            {/* Login button - Desktop */}
-            <button
-              onClick={() => navigate('/login')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition hidden md:inline-block"
-            >
-              Login
-            </button>
-
-            {/* Notification Bell */}
-            <div className="relative" ref={notifRef}>
-              <button
-                onClick={() => setNotifOpen(!notifOpen)}
-                className="relative p-2 text-gray-600 hover:text-indigo-600 transition-colors"
-                aria-label="Notifications"
-              >
-                <i className="fas fa-bell text-xl"></i>
-                {notificationBadgeCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {notificationBadgeCount}
-                  </span>
-                )}
-              </button>
-
-              {notifOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 notification">
-                  <div className="p-4 border-b border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    <NotificationItem
-                      icon="check"
-                      iconBg="bg-green-100"
-                      iconColor="text-green-600"
-                      title="Order #12345 Completed"
-                      message="Your custom suit is ready for delivery"
-                      time="2 minutes ago"
-                    />
-                    <NotificationItem
-                      icon="cut"
-                      iconBg="bg-blue-100"
-                      iconColor="text-blue-600"
-                      title="Tailor Assigned"
-                      message="Master John has been assigned to your order"
-                      time="1 hour ago"
-                    />
-                    <NotificationItem
-                      icon="credit-card"
-                      iconBg="bg-yellow-100"
-                      iconColor="text-yellow-600"
-                      title="Payment Confirmed"
-                      message="$599 payment processed successfully"
-                      time="3 hours ago"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* User Menu */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center space-x-2 text-gray-700 hover:text-indigo-600 transition-colors"
-                aria-label="User menu"
-              >
-                <img
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-                  alt="Profile"
-                  className="w-8 h-8 rounded-full"
-                />
-                <span className="hidden md:block text-sm font-medium">John Doe</span>
-                <i className="fas fa-chevron-down text-xs"></i>
-              </button>
-
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                  <UserMenuItem label="Profile" onClick={() => showSection('profile')} />
-                  <UserMenuItem label=" Measurement" onClick={() => showSection('measurement')} />
-                  <UserMenuItem label="My Orders" onClick={() => showSection('orders')} />
-                  <div className="border-t border-gray-100"></div>
-                  <UserMenuItem label="Admin Panel" onClick={() => showSection('admin')} />
-                  <UserMenuItem label="Tailor Dashboard" onClick={() => showSection('tailor')} />
-                  <div className="border-t border-gray-100"></div>
-                  <UserMenuItem label="Settings" onClick={() => showSection('settings')} />
-                  <div className="border-t border-gray-100"></div>  
-                  <UserMenuItem label="Logout" onClick={()=> showSection('Logout')} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-gray-600 hover:text-[#e6d4a6]" 
-              aria-label="Open mobile menu"
-            >
-              <i className="fas fa-bars text-xl"></i>
-            </button>
-          </div>
+        {/* Mobile Menu Button */}
+        <div className="md:hidden flex items-center">
+          <DarkModeToggle /> {/* Place DarkModeToggle near mobile menu button for small screens */}
+          <button onClick={() => setIsOpen(!isOpen)} className="ml-4 text-white">
+            {isOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200">
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            {['home', 'services', 'customizer', 'orders'].map((item) => (
-              <button
-                key={item}
-                onClick={() => showSection(item)}
-                className="block w-full text-left px-3 py-2 text-gray-700 hover:text-indigo-600"
-              >
-                {item.charAt(0).toUpperCase() +
-                  item
-                    .slice(1)
-                    .replace(/customizer/, 'Design Customizer')
-                    .replace(/orders/, 'Track Orders')}
-              </button>
+      {/* Mobile Menu Content */}
+      {isOpen && (
+        <div className="md:hidden mt-4 bg-gray-700 rounded-md"> {/* Slightly darker background for mobile menu */}
+          <ul className="flex flex-col space-y-4 p-4"> {/* Added padding to mobile menu list */}
+            {navLinks.map(link => (
+              <li key={link.to}>
+                <Link
+                  to={link.to}
+                  onClick={link.onClick ? link.onClick : () => setIsOpen(false)}
+                  className="flex items-center space-x-2 p-2 text-white hover:bg-gray-600 rounded"
+                >
+                  {link.icon}
+                  <span>{link.text}</span>
+                </Link>
+              </li>
             ))}
-
-            {/* Login button - Mobile */}
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                navigate('/login');
-              }}
-              className="block w-full text-left px-3 py-2 text-white bg-indigo-600 rounded mt-2"
-            >
-              Login
-            </button>
-          </div>
+            <li>
+              <a href="/#services" onClick={handleServicesClick} className="flex items-center space-x-2 p-2 text-white hover:bg-gray-600 rounded">
+                <Info size={18} />
+                <span>Services</span>
+              </a>
+            </li>
+            <li>
+              <a href="/#contact" onClick={handleContactClick} className="flex items-center space-x-2 p-2 text-white hover:bg-gray-600 rounded">
+                <Mail size={18} />
+                <span>Contact</span>
+              </a>
+            </li>
+            {isAuthenticated ? (
+              <>
+                {authenticatedLinks.map(link => (
+                  <li key={link.to}>
+                    <Link to={link.to} onClick={() => setIsOpen(false)} className="flex items-center space-x-2 p-2 text-white hover:bg-gray-600 rounded">
+                      {link.icon}
+                      <span>{link.text}</span>
+                    </Link>
+                  </li>
+                ))}
+                <li>
+                  <button onClick={() => { handleLogout(); setIsOpen(false); }} className="w-full flex items-center space-x-2 p-2 text-white hover:bg-gray-600 rounded">
+                    <LogIn className="rotate-180" size={18} />
+                    <span>Logout</span>
+                  </button>
+                </li>
+              </>
+            ) : (
+              unauthenticatedLinks.map(link => (
+                <li key={link.to}>
+                  <Link to={link.to} onClick={() => setIsOpen(false)} className="flex items-center space-x-2 p-2 text-white hover:bg-gray-600 rounded">
+                    {link.icon}
+                    <span>{link.text}</span>
+                  </Link>
+                </li>
+              ))
+            )}
+          </ul>
         </div>
       )}
     </nav>
   );
 };
-
-const NotificationItem = ({ icon, iconBg, iconColor, title, message, time }) => (
-  <div className="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
-    <div className="flex items-start space-x-3">
-      <div className={`${iconBg} rounded-full p-2`}>
-        <i className={`fas fa-${icon} ${iconColor}`}></i>
-      </div>
-      <div>
-        <p className="text-sm font-medium text-gray-900">{title}</p>
-        <p className="text-xs text-gray-500">{message}</p>
-        <p className="text-xs text-gray-400 mt-1">{time}</p>
-      </div>
-    </div>
-  </div>
-);
-
-const UserMenuItem = ({ label, onClick }) => (
-  <button
-    onClick={onClick}
-    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-    type="button"
-  >
-    {label}
-  </button>
-);
 
 export default Navbar;

@@ -1,62 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import OrderHistoryTable from '../components/OrderHistoryTable'; // or wherever it's saved
+// src/pages/Order.jsx
+import React, { useEffect, useState } from 'react';
+import api from '../utils/axiosInstance';
 
-
-// ... (OrderProgress, OrderPickupInfo, OrderCard, OrderHistoryTable remain unchanged)
-
-// Main Page Component
 const Order = () => {
-  const [orderId, setOrderId] = useState('');
   const [orders, setOrders] = useState([]);
-  const [orderHistory, setOrderHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // ✅ Fetch all orders from backend
   const fetchOrders = async () => {
     try {
-      setLoading(true);
-      const res = await axios.get('/api/admin/orders');
-      const allOrders = res.data;
-
-      // Split in-progress and completed for display
-      const activeOrders = allOrders.filter((o) => o.status !== 'delivered');
-      const historyOrders = allOrders
-        .filter((o) => o.status === 'delivered')
-        .map((o) => ({
-          id: o._id,
-          item: o.service.title,
-          date: new Date(o.createdAt).toLocaleDateString(),
-          status: 'Delivered',
-          total: `$${o.service.price}`
-        }));
-
-      const formattedOrders = activeOrders.map((o) => ({
-        id: o._id,
-        item: o.service.title,
-        status: o.status === 'completed' ? 'Completed' : 'In Progress',
-        progress: o.status === 'completed' ? 100 : 50, // Customize based on backend logic
-        details: [
-          { step: 'Order Placed', date: new Date(o.createdAt).toLocaleString(), completed: true },
-          { step: 'Payment Confirmed', date: null, completed: !!o.paymentRequestSent },
-          { step: 'Tailor Assigned', date: null, completed: !!o.tailor, info: o.tailor?.username },
-          { step: 'Construction', completed: o.status === 'inProgress' || o.status === 'completed', info: 'In progress' },
-          { step: 'Quality Check', completed: o.status === 'completed' },
-          { step: 'Delivery', completed: o.status === 'completed' }
-        ],
-        type: o.status === 'completed' ? 'completed' : 'inProgress',
-        pickupInfo: o.status === 'completed' ? {
-          location: 'Fabrizo Downtown Store',
-          address: '123 Fashion St, NYC',
-          hours: '9 AM - 8 PM',
-          code: `#FAB-${o._id}`
-        } : null
-      }));
-
-      setOrders(formattedOrders);
-      setOrderHistory(historyOrders);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
+      const response = await api.get('/order');
+      setOrders(response.data);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to fetch orders.');
     } finally {
       setLoading(false);
     }
@@ -66,80 +23,87 @@ const Order = () => {
     fetchOrders();
   }, []);
 
-  const handleTrackOrder = () => {
-    if (!orderId.trim()) return alert('Please enter an order number');
-    const found = orders.find((o) => o.id.includes(orderId.trim()));
-    alert(found ? `Order ${orderId} found.` : `Order ${orderId} not found.`);
+  const handleSendPaymentRequest = async (orderId) => {
+    try {
+      await api.post(`/order/${orderId}/send-payment-request`);
+      alert('Payment request sent!');
+      fetchOrders();
+    } catch (err) {
+      console.error(err);
+      alert('Error sending payment request.');
+    }
   };
 
-  const filteredOrders = orderId
-    ? orders.filter((order) => order.id.includes(orderId.trim()))
-    : orders;
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      await api.put(`/order/${orderId}/admin-status`, { status: newStatus });
+      alert('Status updated!');
+      fetchOrders();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update status.');
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 font-sans text-gray-800 flex flex-col">
-      {/* Header */}
-      <nav className="bg-white shadow-sm py-4 px-6 flex items-center justify-between">
-        <div className="flex items-center">
-          <span className="text-2xl font-bold text-indigo-600 mr-8">Fabrizo</span>
-          <div className="hidden md:flex space-x-6 text-gray-700">
-            <a href="#" className="hover:text-indigo-600">Home</a>
-            <a href="#" className="hover:text-indigo-600">Design Customizer</a>
-            <a href="#" className="font-semibold text-indigo-600">Track Orders</a>
-          </div>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">All Orders</h1>
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : error ? (
+        <p className="text-red-500">{error}</p>
+      ) : orders.length === 0 ? (
+        <p>No orders found.</p>
+      ) : (
+        <div className="overflow-auto rounded shadow-sm border">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-[#F5F5F5]">
+              <tr>
+                <th className="p-3 text-left text-sm font-semibold">Order ID</th>
+                <th className="p-3 text-left text-sm font-semibold">Customer</th>
+                <th className="p-3 text-left text-sm font-semibold">Tailor</th>
+                <th className="p-3 text-left text-sm font-semibold">Service</th>
+                <th className="p-3 text-left text-sm font-semibold">Status</th>
+                <th className="p-3 text-left text-sm font-semibold">Payment</th>
+                <th className="p-3 text-left text-sm font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {orders.map((order) => (
+                <tr key={order._id} className="hover:bg-gray-50">
+                  <td className="p-3 text-sm">{order._id.slice(-6).toUpperCase()}</td>
+                  <td className="p-3 text-sm">{order.customer?.username}</td>
+                  <td className="p-3 text-sm">{order.tailor?.username || '—'}</td>
+                  <td className="p-3 text-sm">{order.service?.title} (${order.service?.price})</td>
+                  <td className="p-3 text-sm capitalize">{order.status}</td>
+                  <td className="p-3 text-sm capitalize">{order.paymentStatus}</td>
+                  <td className="p-3 text-sm space-x-2">
+                    {!order.paymentRequestSent && (
+                      <button
+                        onClick={() => handleSendPaymentRequest(order._id)}
+                        className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                      >
+                        Request Payment
+                      </button>
+                    )}
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                      className="text-xs px-2 py-1 border rounded"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="inProgress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="flex items-center space-x-4">
-          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <span className="text-gray-700 font-medium">John Doe</span>
-        </div>
-      </nav>
-
-      {/* Main */}
-      <main className="flex-grow p-6 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2">Order Tracking</h1>
-          <p className="text-gray-600 mb-8">Monitor your orders in real-time from design to delivery.</p>
-
-          {/* Search */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8 flex flex-col sm:flex-row items-center gap-4">
-            <input
-              type="text"
-              placeholder="Enter order number..."
-              className="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={orderId}
-              onChange={(e) => setOrderId(e.target.value)}
-            />
-            <button
-              className="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition flex items-center"
-              onClick={handleTrackOrder}
-            >
-              <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-              </svg>
-              Track Order
-            </button>
-          </div>
-
-          {/* Loading Indicator */}
-          {loading ? (
-            <p className="text-center text-gray-500">Loading orders...</p>
-          ) : (
-            <>
-              {/* Orders */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                {filteredOrders.map((order) => <OrderCard key={order.id} order={order} />)}
-              </div>
-
-              {/* History */}
-              <OrderHistoryTable history={orderHistory} />
-            </>
-          )}
-        </div>
-      </main>
+      )}
     </div>
   );
 };
