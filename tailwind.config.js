@@ -7,3 +7,7 @@ export default {
   },
   plugins: [],
 }
+module.exports = {
+  darkMode: 'class',
+  // ...
+}

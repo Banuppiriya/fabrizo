@@ -9,7 +9,7 @@ const Order = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await api.get('/order');
+      const response = await api.get('/orders');
       setOrders(response.data);
     } catch (err) {
       console.error(err);
@@ -23,20 +23,20 @@ const Order = () => {
     fetchOrders();
   }, []);
 
-  const handleSendPaymentRequest = async (orderId) => {
-    try {
-      await api.post(`/order/${orderId}/send-payment-request`);
-      alert('Payment request sent!');
-      fetchOrders();
-    } catch (err) {
-      console.error(err);
-      alert('Error sending payment request.');
-    }
-  };
+const handleSendPaymentRequest = async (orderId) => {
+  try {
+    const res = await api.post(`/orders/${orderId}/pay`);
+    alert('Payment request sent!');
+    fetchOrders();
+  } catch (err) {
+    console.error(err);
+    alert('Error sending payment request.');
+  }
+};
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      await api.put(`/order/${orderId}/admin-status`, { status: newStatus });
+      await api.put(`/orders/${orderId}/status`, { status: newStatus }); // ✅ UPDATED ENDPOINT
       alert('Status updated!');
       fetchOrders();
     } catch (err) {
@@ -93,7 +93,7 @@ const Order = () => {
                       className="text-xs px-2 py-1 border rounded"
                     >
                       <option value="pending">Pending</option>
-                      <option value="inProgress">In Progress</option>
+                      <option value="processing">Processing</option>
                       <option value="completed">Completed</option>
                       <option value="cancelled">Cancelled</option>
                     </select>

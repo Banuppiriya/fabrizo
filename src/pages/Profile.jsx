@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'; // Import useRef
 import api from '../utils/axiosInstance';
 import { Edit, Save, X, Image as ImageIcon, Upload } from 'lucide-react'; // Import ImageIcon and Upload
+import { useNavigate } from 'react-router-dom'; // Import useNavigate for SPA-friendly navigation
 // If you uncomment toast, ensure 'react-hot-toast' is installed
 // import toast from 'react-hot-toast';
 
@@ -35,12 +36,21 @@ const Profile = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const fileInputRef = useRef(null); // Ref for file input to trigger click
+  const navigate = useNavigate(); // Initialize useNavigate
 
   // Fetch user profile data on component mount
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const { data } = await api.get('/user/profile');
+        // Debug: print the token and headers being sent
+        const token = localStorage.getItem('token');
+        console.log('Profile.jsx: token in localStorage:', token);
+        const { data } = await api.get('/user/profile', {
+          headers: {
+            // This will override the default if set, but also lets us log it
+            Authorization: token ? `Bearer ${token}` : undefined,
+          },
+        });
         setProfile(data);
         const initialData = {
           username: data.username || '',
@@ -53,6 +63,13 @@ const Profile = () => {
           setFilePreviewUrl(data.profilePicture); // Set preview if picture exists
         }
       } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setError('');
+          navigate('/login', { replace: true }); // Use navigate for SPA-friendly redirect
+          return;
+        }
         console.error("Error fetching profile:", err);
         setError('Failed to fetch profile data. Please try again.');
       } finally {
@@ -60,7 +77,7 @@ const Profile = () => {
       }
     };
     fetchProfile();
-  }, []);
+  }, [navigate]);
 
   // Handle file selection
   const handleFileChange = (e) => {

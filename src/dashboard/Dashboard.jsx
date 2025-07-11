@@ -1,10 +1,10 @@
 import React from 'react';
-import { theme } from '../theme';
+import theme from '/src/theme.js';
 import { FaUser, FaSignOutAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import AdminDashboard from './AdminDashboard';
 import TailorDashboard from './TailorDashboard';
-import CustomerDashboard from './CustomerDashboard';
+import CustomerDashboard from './UserDashboard';
 
 const Dashboard = () => {
   const navigate = useNavigate();

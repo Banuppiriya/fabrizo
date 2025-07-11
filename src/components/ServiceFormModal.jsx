@@ -81,8 +81,14 @@ const ServiceFormModal = ({ isOpen, onClose, onSuccess, serviceToEdit }) => {
       }
 
       onSuccess(); // optional callback
-      navigate('/Order'); // <--- redirect after success
     } catch (err) {
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setError('');
+        navigate('/login', { replace: true });
+        return;
+      }
       console.error('Error saving service:', err.response?.data || err);
       setError(err.response?.data?.message || 'Failed to save service. Please check your inputs.');
     } finally {

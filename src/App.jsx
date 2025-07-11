@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { decodeToken } from './utils/authService.js';
 
@@ -6,24 +6,28 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/RegisterPage';
-import AdminDashboard from './dashboard/AdminDashboard';
-import TailorDashboard from './dashboard/TailorDashboard';
 import Profile from './pages/Profile';
-import Settings from './dashboard/Settings';
 import Logout from './pages/Logout';
 import Services from './pages/Services';
 import Contact from './pages/Contact';
-import AdminRoute from './components/AdminRoute';
-import TailorRoute from './components/TailorRoute'; // ✅ Default import
-import ColorPalette from './components/ColorPalette';
-import CheckoutButton from './components/CheckoutButton.jsx';
+import OrderPage from './pages/OrderPage';
+import Order from './pages/Order';
 import OrderDetails from './pages/OrderDetails.jsx';
-import Order from './pages/Order.jsx';
+import CheckoutButton from './components/CheckoutButton.jsx';
+import ColorPalette from './components/ColorPalette';
 
-// Separate component to scroll to hash targets
+import AdminDashboard from './dashboard/AdminDashboard.jsx';
+import TailorDashboard from './dashboard/TailorDashboard.jsx';
+import Dashboard from './dashboard/Dashboard.jsx';
+import Settings from './dashboard/Settings';
+import UserDashboard from './dashboard/UserDashboard.jsx';
+
+import AdminRoute from './components/AdminRoute.jsx';
+import TailorRoute from './components/TailorRoute.jsx';
+import CustomerRoute from './components/UserRoute.jsx';  // <-- imported as CustomerRoute
+
 const ScrollToSection = () => {
   const { hash } = useLocation();
-
   useEffect(() => {
     if (hash) {
       const id = hash.replace('#', '');
@@ -33,18 +37,18 @@ const ScrollToSection = () => {
       }
     }
   }, [hash]);
-
   return null;
 };
 
 const App = () => {
-  const [authState, setAuthState] = React.useState({
+  const [authState, setAuthState] = useState({
     isAuthenticated: false,
     isAdmin: false,
     isTailor: false,
+    role: null,
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     const checkToken = async () => {
       const token = localStorage.getItem('token');
       if (token) {
@@ -57,30 +61,20 @@ const App = () => {
               isAuthenticated: true,
               isAdmin: decodedToken.role === 'admin',
               isTailor: decodedToken.role === 'tailor',
+              role: decodedToken.role,
             });
           } else {
-            // Token expired – remove it
             localStorage.removeItem('token');
-            setAuthState({
-              isAuthenticated: false,
-              isAdmin: false,
-              isTailor: false,
-            });
           }
         } catch (error) {
           console.error('Invalid token:', error);
-          localStorage.removeItem('token'); // Clean up invalid token
-          setAuthState({
-            isAuthenticated: false,
-            isAdmin: false,
-            isTailor: false,
-          });
+          localStorage.removeItem('token');
         }
       }
     };
+
     checkToken();
   }, []);
-
 
   return (
     <Router>
@@ -92,24 +86,19 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/services" element={<Services />} />
-           <Route path="/services/Order/:id" element={<OrderDetails />} caseSensitive={false} />
           <Route path="/contact" element={<Contact />} />
-        
+          <Route path="/order" element={<OrderPage />} />
+          <Route path="/orders" element={<Order />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/logout" element={<Logout />} />
+          <Route path="/checkout" element={<CheckoutButton />} />
+          <Route path="/color-palette" element={<ColorPalette />} />
+          <Route path="/dashboard" element={<Dashboard />} />
 
-          {/* Private Routes */}
-          {/* <Route element={<PrivateRoute isAuthenticated={authState.isAuthenticated} />}> */}
-
-            <Route path="/Order" element={<Order />} />
-            <Route path="/order-details" element={<OrderDetails />} />
-            <Route path="/order-details/:id" element={<OrderDetails />} />
-            <Route path="/order-details/:id/:section" element={<OrderDetails />} />
-            <Route path="/order-details/:id/:section/:subSection" element={<OrderDetails />} />      
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/logout" element={<Logout />} />
-            <Route path="/checkout" element={<CheckoutButton />} />
-
-          {/* </Route> */}
+          {/* Order Details */}
+          <Route path="/orders/:orderId" element={<OrderDetails />} />
+          <Route path="/services/OrderDetails/:orderId" element={<OrderDetails />} />
 
           {/* Admin Routes */}
           <Route element={<AdminRoute isAuthenticated={authState.isAuthenticated} isAdmin={authState.isAdmin} />}>
@@ -121,9 +110,10 @@ const App = () => {
             <Route path="/tailor" element={<TailorDashboard />} />
           </Route>
 
-         
-          {/* Color Palette Route */}
-          <Route path="/color-palette" element={<ColorPalette />} />
+          {/* Customer Routes */}
+          <Route element={<CustomerRoute isAuthenticated={authState.isAuthenticated} />}>
+            <Route path="/user" element={<UserDashboard />} />
+          </Route>
         </Routes>
       </Layout>
     </Router>

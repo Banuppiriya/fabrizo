@@ -1,4 +1,3 @@
-// src/pages/OrderDetails.jsx
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../utils/axiosInstance';
@@ -14,12 +13,11 @@ const OrderDetails = () => {
       setLoading(true);
       setError('');
       try {
-        // Corrected API endpoint to /orders/:orderId
-        const res = await api.get(`/order/${orderId}`);
+        const res = await api.get(`/orders/${orderId}`);
         setOrder(res.data);
       } catch (err) {
-        console.error('Failed to fetch order', err);
         setError('Order not found or error loading order.');
+        setOrder(null);
       } finally {
         setLoading(false);
       }
@@ -29,7 +27,7 @@ const OrderDetails = () => {
   }, [orderId]);
 
   if (loading) return <p className="text-center">Loading order...</p>;
-  if (error) return <p className="text-red-500 text-center">{error}</p>;
+  if (error) return <p className="text-red-500 text-center">{error} (ID: {orderId})</p>;
   if (!order) return <p className="text-center">No order data available.</p>;
 
   return (
@@ -41,7 +39,6 @@ const OrderDetails = () => {
       <p><strong>Customer:</strong> {order.customer?.username || 'N/A'}</p>
       <p><strong>Tailor:</strong> {order.tailor?.username || 'Not assigned'}</p>
       <p><strong>Created At:</strong> {new Date(order.createdAt).toLocaleString()}</p>
-      {/* Add more order details as needed */}
     </div>
   );
 };

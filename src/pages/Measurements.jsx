@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../utils/axiosInstance';
 
-const Measurements = () => {
+const Measurements = ({ serviceId }) => {
   const [upperBody, setUpperBody] = useState({
     chest: '',
     shoulderWidth: '',
@@ -23,6 +23,7 @@ const Measurements = () => {
   const [success, setSuccess] = useState('');
   const [orderSuccess, setOrderSuccess] = useState('');
   const [orderError, setOrderError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
 
   useEffect(() => {
@@ -66,34 +67,63 @@ const Measurements = () => {
     setLowerBody({ ...lowerBody, [e.target.name]: e.target.value });
   };
 
+  // Helper to convert string inputs to numbers or 0
+  const toNumericMeasurements = (measurements) =>
+    Object.fromEntries(
+      Object.entries(measurements).map(([key, value]) => [key, Number(value) || 0])
+    );
+
   const handleSubmitMeasurements = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setSaving(true);
 
     try {
-      await api.post('/measurements', { upperBody, lowerBody });
+      const numericUpperBody = toNumericMeasurements(upperBody);
+      const numericLowerBody = toNumericMeasurements(lowerBody);
+
+      await api.post('/measurements', { upperBody: numericUpperBody, lowerBody: numericLowerBody });
       setSuccess('Measurements saved successfully!');
     } catch (err) {
       console.error(err);
       setError('Failed to save measurements.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  // New function to create order with current measurements
   const handleCreateOrder = async () => {
     setOrderError('');
     setOrderSuccess('');
     setCreatingOrder(true);
 
+    // Basic validation: check if all fields have values (non-empty strings)
+    const hasEmptyUpper = Object.values(upperBody).some((v) => v === '');
+    const hasEmptyLower = Object.values(lowerBody).some((v) => v === '');
+
+    if (hasEmptyUpper || hasEmptyLower) {
+      setOrderError('Please fill all measurement fields before creating an order.');
+      setCreatingOrder(false);
+      return;
+    }
+
+    if (!serviceId) {
+      setOrderError('No service selected for the order.');
+      setCreatingOrder(false);
+      return;
+    }
+
     try {
-      // For example, sending service id and measurements to backend order creation
+      const numericUpperBody = toNumericMeasurements(upperBody);
+      const numericLowerBody = toNumericMeasurements(lowerBody);
+
       await api.post('/order', {
-        service: 'SERVICE_ID_HERE', // replace with real service id
-        designDetails: 'Custom design', // optionally add design details
+        service: serviceId,
+        designDetails: 'Custom design', // You can make this dynamic too
         measurements: {
-          upperBody,
-          lowerBody,
+          upperBody: numericUpperBody,
+          lowerBody: numericLowerBody,
         },
       });
       setOrderSuccess('Order created successfully!');
@@ -125,11 +155,13 @@ const Measurements = () => {
               <input
                 id={key}
                 name={key}
-                type="text"
+                type="number"
                 value={value}
                 onChange={handleUpperBodyChange}
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 placeholder={`Enter ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`}
+                min="0"
+                step="0.1"
               />
             </div>
           ))}
@@ -145,11 +177,13 @@ const Measurements = () => {
               <input
                 id={key}
                 name={key}
-                type="text"
+                type="number"
                 value={value}
                 onChange={handleLowerBodyChange}
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 placeholder={`Enter ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`}
+                min="0"
+                step="0.1"
               />
             </div>
           ))}
@@ -157,9 +191,10 @@ const Measurements = () => {
 
         <button
           type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          disabled={saving}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          Save Measurements
+          {saving ? 'Saving...' : 'Save Measurements'}
         </button>
       </form>
 
@@ -172,7 +207,7 @@ const Measurements = () => {
         <button
           onClick={handleCreateOrder}
           disabled={creatingOrder}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
         >
           {creatingOrder ? 'Creating Order...' : 'Create Order'}
         </button>

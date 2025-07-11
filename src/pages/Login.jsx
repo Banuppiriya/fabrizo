@@ -2,32 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/axiosInstance';
 import loginImage from '../assets/login.jpg';
-
-// ✅ Correct named import
+import { Loader2 } from 'lucide-react';
 import { jwtDecode } from 'jwt-decode';
 
-// ✅ Debug logs for development (optional)
-console.log("DEBUG: jwtDecode after named import:", jwtDecode);
-console.log("DEBUG: Type of jwtDecode:", typeof jwtDecode);
-
-/**
- * Helper to decode JWT and validate
- */
+// Helper function to decode and validate token
 const decodeToken = (token) => {
   try {
-    if (typeof jwtDecode !== 'function') {
-      console.error("jwtDecode is not a function");
-      return null;
-    }
     const decoded = jwtDecode(token);
-
-    // ✅ Optional: Expiry check
     const now = Date.now() / 1000;
     if (decoded.exp && decoded.exp < now) {
       console.warn("Token expired");
       return null;
     }
-
     return decoded;
   } catch (err) {
     console.error("Error decoding token:", err);
@@ -50,20 +36,17 @@ const Login = () => {
     setError('');
     setLoading(true);
 
-    if (typeof jwtDecode !== 'function') {
-      setError("Internal error: JWT decoder not available");
-      console.error("Login halted: jwtDecode is not a function.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      console.log('Logging in with:', formData.email);
-      const { data } = await api.post('auth/login', formData);
-      console.log('Login response:', data);
+      const payload = {
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+      };
+
+      const { data } = await api.post('auth/login', payload);
 
       if (!data.token || typeof data.token !== 'string') {
-        setError("Invalid token received");
+        setError("Invalid token received from server.");
+        setLoading(false);
         return;
       }
 
@@ -71,31 +54,37 @@ const Login = () => {
       const decodedToken = decodeToken(data.token);
 
       if (!decodedToken) {
-        setError("Token could not be decoded or is expired");
+        setError("Login failed: Invalid or expired token received.");
         localStorage.removeItem('token');
+        setLoading(false);
         return;
       }
 
       const userData = {
-        username: decodedToken.username || '',
+        username: decodedToken.username || 'User',
         role: decodedToken.role || 'user',
-        email: decodedToken.email || '',
+        email: decodedToken.email || formData.email,
         id: decodedToken.id || decodedToken.sub || '',
       };
 
       localStorage.setItem('user', JSON.stringify(userData));
+      console.log('User data stored:', userData);
 
-      // Navigate by role
-      if (userData.role === 'admin') {
-        navigate('/admin');
-      } else if (userData.role === 'tailor') {
-        navigate('/tailor');
-      } else {
-        navigate('/');
+      // Role-based redirect
+      switch (userData.role.toLowerCase()) {
+        case 'tailor':
+          navigate('/tailor');
+          break;
+        case 'admin':
+          navigate('/admin');
+          break;
+        default:
+          navigate('/user');
+          break;
       }
     } catch (err) {
-      console.error('Login error:', err);
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      console.error('Login error details:', err.response?.data || err.message || err);
+      setError(err.response?.data?.message || 'Login failed. Please check your email and password.');
     } finally {
       setLoading(false);
     }
@@ -103,21 +92,23 @@ const Login = () => {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center font-sans"
+      className="min-h-screen flex items-center justify-center bg-cover bg-center font-['Montserrat']"
       style={{ backgroundImage: `url(${loginImage})` }}
     >
-      <div className="bg-white bg-opacity-95 p-8 rounded-xl shadow-2xl w-full max-w-md backdrop-blur-sm">
-        <h2 className="text-4xl font-bold mb-6 text-center text-gray-800">Welcome Back</h2>
+      <div className="bg-white bg-opacity-95 p-8 rounded-xl shadow-2xl w-full max-w-md backdrop-blur-sm border border-gray-200">
+        <h2 className="text-4xl font-bold mb-6 text-center text-[#1C1F43] font-['Playfair_Display']">
+          Welcome Back
+        </h2>
 
         {error && (
-          <p className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-center border border-red-200">
+          <p className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-center border border-red-300 font-medium">
             {error}
           </p>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-gray-700 text-sm font-semibold mb-2" htmlFor="email">
+            <label className="block text-[#3B3F4C] text-sm font-semibold mb-2" htmlFor="email">
               Email Address
             </label>
             <input
@@ -129,11 +120,11 @@ const Login = () => {
               required
               autoComplete="username"
               placeholder="you@example.com"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B26942] focus:border-[#B26942] text-[#3B3F4C]"
             />
           </div>
           <div>
-            <label className="block text-gray-700 text-sm font-semibold mb-2" htmlFor="password">
+            <label className="block text-[#3B3F4C] text-sm font-semibold mb-2" htmlFor="password">
               Password
             </label>
             <input
@@ -145,35 +136,35 @@ const Login = () => {
               required
               autoComplete="current-password"
               placeholder="••••••••"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B26942] focus:border-[#B26942] text-[#3B3F4C]"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center transition-transform duration-300 transform hover:scale-105"
+            className="group relative inline-flex items-center justify-center overflow-hidden rounded-lg bg-[#1C1F43] py-3 px-8 font-bold text-[#F2E1C1] shadow-xl transition-all duration-300 ease-out hover:scale-105 hover:shadow-2xl text-lg w-full disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
-                <svg className="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" />
-                </svg>
+                <Loader2 className="animate-spin h-5 w-5 mr-3 text-[#F2E1C1]" />
                 Logging in...
               </>
             ) : (
-              'Login'
+              <>
+                <span className="absolute inset-0 h-full w-full bg-gradient-to-br from-[#1C1F43] via-[#3B3F4C] to-[#1C1F43] opacity-0 transition-opacity duration-300 group-hover:opacity-100"></span>
+                <span className="relative">Login</span>
+              </>
             )}
           </button>
 
           <p className="text-center text-sm text-gray-600 mt-4">
-            <Link to="/forgot-password" className="font-bold text-blue-600 hover:underline">
+            <Link to="/forgot-password" className="font-bold text-[#B26942] hover:underline">
               Forgot Password?
             </Link>
           </p>
           <p className="text-center text-sm text-gray-600 mt-6">
             Don't have an account?{' '}
-            <Link to="/register" className="font-bold text-blue-600 hover:underline">
+            <Link to="/register" className="font-bold text-[#B26942] hover:underline">
               Register here
             </Link>
           </p>
