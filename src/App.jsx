@@ -43,12 +43,36 @@ const ScrollToSection = () => {
   return null;
 };
 
+
 const App = () => {
-  const [authState, setAuthState] = useState({
-    isAuthenticated: false,
-    isAdmin: false,
-    isTailor: false,
-    role: null,
+  const [authState, setAuthState] = useState(() => {
+    // On initial load, try to rehydrate from localStorage
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    if (token && user) {
+      try {
+        const decodedToken = JSON.parse(user); // user info is stringified
+        const currentTime = Date.now() / 1000;
+        if (decodedToken.exp > currentTime) {
+          return {
+            isAuthenticated: true,
+            isAdmin: decodedToken.role === 'admin',
+            isTailor: decodedToken.role === 'tailor',
+            role: decodedToken.role,
+            user: decodedToken,
+          };
+        }
+      } catch (e) {
+        // fallback to unauthenticated
+      }
+    }
+    return {
+      isAuthenticated: false,
+      isAdmin: false,
+      isTailor: false,
+      role: null,
+      user: null,
+    };
   });
 
   useEffect(() => {
@@ -58,24 +82,49 @@ const App = () => {
         try {
           const decodedToken = await decodeToken(token);
           const currentTime = Date.now() / 1000;
-
           if (decodedToken.exp > currentTime) {
+            // Save user info in localStorage for persistence
+            localStorage.setItem('user', JSON.stringify(decodedToken));
             setAuthState({
               isAuthenticated: true,
               isAdmin: decodedToken.role === 'admin',
               isTailor: decodedToken.role === 'tailor',
               role: decodedToken.role,
+              user: decodedToken,
             });
           } else {
             localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setAuthState({
+              isAuthenticated: false,
+              isAdmin: false,
+              isTailor: false,
+              role: null,
+              user: null,
+            });
           }
         } catch (error) {
           console.error('Invalid token:', error);
           localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setAuthState({
+            isAuthenticated: false,
+            isAdmin: false,
+            isTailor: false,
+            role: null,
+            user: null,
+          });
         }
+      } else {
+        setAuthState({
+          isAuthenticated: false,
+          isAdmin: false,
+          isTailor: false,
+          role: null,
+          user: null,
+        });
       }
     };
-
     checkToken();
   }, []);
 

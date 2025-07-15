@@ -24,11 +24,11 @@ const Dashboard = () => {
   const renderDashboardContent = () => {
     switch (user.role) {
       case 'admin':
-        return <AdminDashboard />;
+        navigate('/admin');
       case 'tailor':
-        return <TailorDashboard />;
+        navigate('/tailor');
       default:
-        return <CustomerDashboard />;
+        navigate('/user');
     }
   };
 

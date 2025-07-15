@@ -61,34 +61,23 @@ const Login = () => {
         return;
       }
 
-      const userData = {
-        username: decodedToken.username || 'User',
-        role: decodedToken.role || 'user',
-        email: decodedToken.email || formData.email,
-        id: decodedToken.id || decodedToken.sub || '',
-      };
 
-      localStorage.setItem('user', JSON.stringify(userData));
-      console.log('User data stored:', userData);
+      // Store the full decoded token (with exp, role, etc.) for persistence
+      localStorage.setItem('user', JSON.stringify(decodedToken));
+      console.log('User data stored:', decodedToken);
 
       // Role-based redirect (use backend's redirectTo if present, else fallback)
       if (data.redirectTo) {
         navigate(data.redirectTo);
+      } else if (decodedToken.role?.toLowerCase() === 'admin') {
+        toast.success('Login successful!');
+        navigate('/admin');
+      } else if (decodedToken.role?.toLowerCase() === 'tailor') {
+        toast.success('Login successful!');
+        navigate('/tailor');
       } else {
-        switch (userData.role.toLowerCase()) {
-          case 'tailor':
-            toast.success('Login successful!');
-            navigate('/tailor');
-            break;
-          case 'admin':
-            toast.success('Login successful!');
-            navigate('/admin');
-            break;
-          default:
-            toast.success('Login successful!');
-            navigate('/home');
-            break;
-        }
+        toast.success('Login successful!');
+        navigate('/home');
       }
     } catch (err) {
       console.error('Login error details:', err.response?.data || err.message || err);

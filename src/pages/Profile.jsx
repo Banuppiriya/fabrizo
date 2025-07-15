@@ -1,9 +1,7 @@
-// src/pages/Profile.jsx
-import React, { useState, useEffect, useRef } from 'react'; // Import useRef
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../utils/axiosInstance';
-import { Edit, Save, X, Image as ImageIcon, Upload } from 'lucide-react'; // Import ImageIcon and Upload
-import { useNavigate } from 'react-router-dom'; // Import useNavigate for SPA-friendly navigation
-// If you uncomment toast, ensure 'react-hot-toast' is installed
+import { Edit, Save, X, Image as ImageIcon, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 // import toast from 'react-hot-toast';
 
 // This theme object helps manage consistent styling.
@@ -210,7 +208,13 @@ const Profile = () => {
             >
               {filePreviewUrl ? (
                 <img
-                  src={filePreviewUrl}
+                  src={
+                    filePreviewUrl.startsWith('blob:')
+                      ? filePreviewUrl
+                      : filePreviewUrl.startsWith('http')
+                        ? filePreviewUrl
+                        : `http://localhost:5000${filePreviewUrl}`
+                  }
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />

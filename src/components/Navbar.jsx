@@ -88,6 +88,7 @@ const Navbar = () => {
     { to: '/register', text: 'Register', icon: <UserPlus size={18} /> },
   ];
 
+
   return (
     <nav className="bg-gray-400 p-4 text-[#F2E1C1] shadow-lg sticky top-0 z-50">
       <div className="container mx-auto flex justify-between items-center">
@@ -98,61 +99,72 @@ const Navbar = () => {
 
         {/* Desktop Menu */}
         <ul className="hidden md:flex items-center space-x-6">
-          {navLinks.map(link => (
-            <li key={link.to}>
-              <Link
-                to={link.to}
-                onClick={() => setIsOpen(false)}
-                className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300"
-              >
-                {link.icon}
-                <span>{link.text}</span>
-              </Link>
+          {userRole === 'admin' ? (
+            <li>
+              <button onClick={handleLogout} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300">
+                <LogIn className="rotate-180" size={18} />
+                <span>Logout</span>
+              </button>
             </li>
-          ))}
-
-          <li>
-            <a href="/#services" onClick={handleServicesClick} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300 cursor-pointer">
-              <Info size={18} />
-              <span>Services</span>
-            </a>
-          </li>
-
-          <li>
-            <a href="/#contact" onClick={handleContactClick} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300 cursor-pointer">
-              <Mail size={18} />
-              <span>Contact</span>
-            </a>
-          </li>
-
-          {isAuthenticated ? (
+          ) : (
             <>
-              {authenticatedLinks.map(link => (
+              {navLinks.map(link => (
                 <li key={link.to}>
-                  <Link to={link.to} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300">
+                  <Link
+                    to={link.to}
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300"
+                  >
                     {link.icon}
                     <span>{link.text}</span>
                   </Link>
                 </li>
               ))}
+
               <li>
-                <button onClick={handleLogout} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300">
-                  <LogIn className="rotate-180" size={18} />
-                  <span>Logout</span>
-                </button>
+                <a href="/#services" onClick={handleServicesClick} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300 cursor-pointer">
+                  <Info size={18} />
+                  <span>Services</span>
+                </a>
               </li>
+
+              <li>
+                <a href="/#contact" onClick={handleContactClick} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300 cursor-pointer">
+                  <Mail size={18} />
+                  <span>Contact</span>
+                </a>
+              </li>
+
+              {isAuthenticated ? (
+                <>
+                  {authenticatedLinks.map(link => (
+                    <li key={link.to}>
+                      <Link to={link.to} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300">
+                        {link.icon}
+                        <span>{link.text}</span>
+                      </Link>
+                    </li>
+                  ))}
+                  <li>
+                    <button onClick={handleLogout} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300">
+                      <LogIn className="rotate-180" size={18} />
+                      <span>Logout</span>
+                    </button>
+                  </li>
+                </>
+              ) : (
+                unauthenticatedLinks.map(link => (
+                  <li key={link.to}>
+                    <Link to={link.to} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300">
+                      {link.icon}
+                      <span>{link.text}</span>
+                    </Link>
+                  </li>
+                ))
+              )}
+              <li><DarkModeToggle /></li>
             </>
-          ) : (
-            unauthenticatedLinks.map(link => (
-              <li key={link.to}>
-                <Link to={link.to} className="flex items-center space-x-1 text-[#F2E1C1] hover:text-gray-300">
-                  {link.icon}
-                  <span>{link.text}</span>
-                </Link>
-              </li>
-            ))
           )}
-          <li><DarkModeToggle /></li>
         </ul>
 
         {/* Mobile Toggle */}

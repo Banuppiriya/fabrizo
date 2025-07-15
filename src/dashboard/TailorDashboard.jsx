@@ -8,12 +8,14 @@ const TailorDashboard = () => {
 
   // Define status options with more user-friendly labels if needed,
   // but keeping them as is to match backend if 'inProgress' etc. are exact
-  const statusOptions = ['pending', 'inProgress', 'completed', 'delivered', 'cancelled']; // Added 'pending' and 'cancelled' for completeness
+  // Match backend status enum: ['pending', 'accepted', 'processing', 'completed', 'cancelled']
+  const statusOptions = ['pending', 'accepted', 'processing', 'completed', 'cancelled'];
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         const { data } = await api.get('/tailor/me/orders'); // Tailor's assigned orders
+        console.log('Fetched orders for tailor:', data); // Debug log
         setOrders(data);
         setError('');
       } catch (err) {
@@ -129,38 +131,54 @@ const TailorDashboard = () => {
                 orders.map((order) => (
                   <tr key={order._id} className="hover:bg-gray-50 transition-colors duration-150 ease-in-out">
                     <td className="py-3 px-4 whitespace-nowrap text-sm font-mono text-gray-700">
-                      {order._id.slice(-8).toUpperCase()} {/* Display last 8 chars for brevity */}
+                      {order._id?.slice(-8).toUpperCase() || 'N/A'} {/* Display last 8 chars for brevity */}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800">
-                      {order.customer?.username || 'N/A'}
+                      {order.customer?.username || order.customerName || 'N/A'}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800">
                       {order.service?.title || 'N/A'}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        order.status === 'completed' || order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                        order.status === 'inProgress' ? 'bg-blue-100 text-blue-800' :
+                        order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                        order.status === 'accepted' ? 'bg-purple-100 text-purple-800' :
                         order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800' // Default/cancelled
                       }`}>
                         {order.status}
                       </span>
                     </td>
+                    {/* Show more debug info for troubleshooting */}
+                    <td className="py-3 px-4 whitespace-nowrap text-xs text-gray-500">
+                      <div>OrderID: {order._id}</div>
+                      <div>Tailor: {order.tailor}</div>
+                      <div>Status: {order.status}</div>
+                    </td>
                     <td className="py-3 px-4 whitespace-nowrap">
-                      <select
-                        value={order.status}
-                        onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                        className="block w-full pl-3 pr-8 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none leading-tight"
-                        // Added custom arrow for select
-                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3e%3cpath d='M7 7l3-3 3 3m0 6l-3 3-3-3' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25rem' }}
-                      >
-                        {statusOptions.map((status) => (
-                          <option key={status} value={status}>
-                            {status.charAt(0).toUpperCase() + status.slice(1).replace(/([A-Z])/g, ' $1')}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex flex-col gap-2">
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                          className="block w-full pl-3 pr-8 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none leading-tight"
+                          style={{ backgroundImage: `url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3e%3cpath d='M7 7l3-3 3 3m0 6l-3 3-3-3' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e\")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25rem' }}
+                        >
+                          {statusOptions.map((status) => (
+                            <option key={status} value={status}>
+                              {status.charAt(0).toUpperCase() + status.slice(1).replace(/([A-Z])/g, ' $1')}
+                            </option>
+                          ))}
+                        </select>
+                        {order.status !== 'completed' && order.status !== 'delivered' && (
+                          <button
+                            className="mt-1 w-full bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-2 px-3 rounded-md transition-colors duration-150"
+                            onClick={() => handleStatusChange(order._id, 'completed')}
+                          >
+                            Finish Order
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
