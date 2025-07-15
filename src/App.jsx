@@ -11,9 +11,9 @@ import Logout from './pages/Logout';
 import Services from './pages/Services';
 import Contact from './pages/Contact';
 import OrderPage from './pages/OrderPage';
-import Order from './pages/Order';
 import OrderDetails from './pages/OrderDetails.jsx';
 import CheckoutButton from './components/CheckoutButton.jsx';
+import CheckoutPage from './pages/CheckoutPage.jsx';
 import ColorPalette from './components/ColorPalette';
 
 import AdminDashboard from './dashboard/AdminDashboard.jsx';
@@ -25,6 +25,9 @@ import UserDashboard from './dashboard/UserDashboard.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
 import TailorRoute from './components/TailorRoute.jsx';
 import CustomerRoute from './components/UserRoute.jsx';  // <-- imported as CustomerRoute
+
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ScrollToSection = () => {
   const { hash } = useLocation();
@@ -78,6 +81,8 @@ const App = () => {
 
   return (
     <Router>
+      <ToastContainer position="top-right" autoClose={3000} />
+
       <Layout>
         <ScrollToSection />
         <Routes>
@@ -88,11 +93,10 @@ const App = () => {
           <Route path="/services" element={<Services />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/order" element={<OrderPage />} />
-          <Route path="/orders" element={<Order />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/logout" element={<Logout />} />
-          <Route path="/checkout" element={<CheckoutButton />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/color-palette" element={<ColorPalette />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
@@ -115,6 +119,7 @@ const App = () => {
             <Route path="/user" element={<UserDashboard />} />
           </Route>
         </Routes>
+
       </Layout>
     </Router>
   );

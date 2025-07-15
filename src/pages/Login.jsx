@@ -4,6 +4,7 @@ import api from '../utils/axiosInstance';
 import loginImage from '../assets/login.jpg';
 import { Loader2 } from 'lucide-react';
 import { jwtDecode } from 'jwt-decode';
+import { toast } from 'react-toastify';
 
 // Helper function to decode and validate token
 const decodeToken = (token) => {
@@ -70,17 +71,24 @@ const Login = () => {
       localStorage.setItem('user', JSON.stringify(userData));
       console.log('User data stored:', userData);
 
-      // Role-based redirect
-      switch (userData.role.toLowerCase()) {
-        case 'tailor':
-          navigate('/tailor');
-          break;
-        case 'admin':
-          navigate('/admin');
-          break;
-        default:
-          navigate('/user');
-          break;
+      // Role-based redirect (use backend's redirectTo if present, else fallback)
+      if (data.redirectTo) {
+        navigate(data.redirectTo);
+      } else {
+        switch (userData.role.toLowerCase()) {
+          case 'tailor':
+            toast.success('Login successful!');
+            navigate('/tailor');
+            break;
+          case 'admin':
+            toast.success('Login successful!');
+            navigate('/admin');
+            break;
+          default:
+            toast.success('Login successful!');
+            navigate('/home');
+            break;
+        }
       }
     } catch (err) {
       console.error('Login error details:', err.response?.data || err.message || err);

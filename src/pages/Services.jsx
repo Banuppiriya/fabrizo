@@ -125,7 +125,7 @@ const Services = () => {
   }
 
   return (
-    <div className="bg-[#F2E1C1] py-12 min-h-screen font-['Montserrat']">
+    <div className="bg-gray-300 py-12 min-h-screen font-['Montserrat']">
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
           <h1 className="text-4xl font-extrabold font-['Playfair_Display'] text-[#1C1F43]">

@@ -78,7 +78,7 @@ const Navbar = () => {
 
   const authenticatedLinks = [
     { to: '/profile', text: 'Profile', icon: <User size={18} /> },
-    { to: '/orders', text: 'Orders', icon: <ShoppingCart size={18} /> },
+    { to: '/user', text: 'Orders', icon: <ShoppingCart size={18} /> },
     userRole === 'admin' && { to: '/admin', text: 'Admin', icon: <LockOpen size={18} /> },
     userRole === 'tailor' && { to: '/tailor', text: 'Dashboard', icon: <LockOpen size={18} /> },
   ].filter(Boolean);

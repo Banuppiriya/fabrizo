@@ -2,9 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/axiosInstance'; 
 import { Loader2, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
+import { jwtDecode } from 'jwt-decode';
+import { toast } from 'react-toastify';
+
 
 const OrderPage = () => {
   const navigate = useNavigate();
+
+  // Get user role from token
+  let userRole = null;
+  const token = localStorage.getItem('token');
+  if (token) {
+    try {
+      const decoded = jwtDecode(token);
+      userRole = decoded.role;
+    } catch (e) {
+      userRole = null;
+    }
+  }
 
   const [services, setServices] = useState([]);
   const [selectedServiceId, setSelectedServiceId] = useState('');
@@ -63,24 +78,24 @@ const OrderPage = () => {
     setSubmitSuccess(null);
 
     try {
-      await api.post('/orders', {
-  service: service._id,
-  quantity,
-  specialInstructions,
-  customerName,
-  customerEmail,
-  customerPhone,
-});
-
+      const response = await api.post('/orders', {
+        service: service._id,
+        quantity,
+        specialInstructions,
+        customerName,
+        customerEmail,
+        customerPhone,
+      });
+      const order = response.data;
       setSubmitSuccess(true);
-      setSubmitMessage('Order placed successfully!');
+      toast.success('Order placed successfully! Redirecting to payment...');
       setTimeout(() => {
-        navigate('/orders');
-      }, 2000);
+        navigate('/checkout', { state: { order } });
+      }, 1500);
     } catch (err) {
       console.error("Error response from server:", err.response?.data);
       setSubmitSuccess(false);
-      setSubmitMessage(err.response?.data?.message || 'Failed to place order.');
+      toast.error(err.response?.data?.message || 'Failed to place order.');
     } finally {
       setIsSubmitting(false);
     }
@@ -91,6 +106,16 @@ const OrderPage = () => {
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#F2E1C1] text-[#1C1F43]">
         <Loader2 className="animate-spin mb-4" size={48} />
         <p>Loading services...</p>
+      </div>
+    );
+  }
+
+  if (userRole !== 'customer') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#F2E1C1] text-[#1C1F43]">
+        <XCircle className="mb-4 text-red-500" size={48} />
+        <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+        <p className="text-lg">Only customers can place orders.</p>
       </div>
     );
   }

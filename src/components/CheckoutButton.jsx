@@ -8,7 +8,7 @@ const CheckoutButton = ({ orderId, email, amount, serviceName }) => {
   const handleCheckout = async () => {
     setLoading(true);
     try {
-      const res = await axios.post('/payment/', {
+      const res = await axios.post('/payment/create-checkout-session', {
         email,
         amount,
         serviceName,
