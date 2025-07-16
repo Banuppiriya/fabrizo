@@ -1,3 +1,5 @@
+import BlogPreview from './components/BlogPreview.jsx';
+import BlogAdmin from './pages/BlogAdmin.jsx';
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { decodeToken } from './utils/authService.js';
@@ -16,6 +18,9 @@ import CheckoutButton from './components/CheckoutButton.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import ColorPalette from './components/ColorPalette';
 
+
+import PaymentSuccess from './pages/PaymentSuccess.jsx';
+import BlogArticle from './pages/BlogArticle.jsx';
 import AdminDashboard from './dashboard/AdminDashboard.jsx';
 import TailorDashboard from './dashboard/TailorDashboard.jsx';
 import Dashboard from './dashboard/Dashboard.jsx';
@@ -147,7 +152,11 @@ const App = () => {
           <Route path="/logout" element={<Logout />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/color-palette" element={<ColorPalette />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          {/* Blog admin, preview, and dynamic route */}
+          <Route path="/admin/blog" element={<BlogAdmin />} />
+          <Route path="/blog" element={<BlogPreview />} />
+          <Route path="/blog/:slug" element={<BlogArticle />} />
 
           {/* Order Details */}
           <Route path="/orders/:orderId" element={<OrderDetails />} />

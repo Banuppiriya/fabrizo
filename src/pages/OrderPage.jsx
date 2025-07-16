@@ -10,7 +10,6 @@ import 'react-toastify/dist/ReactToastify.css';
 const OrderPage = () => {
   const navigate = useNavigate();
 
-
   // Get user role from token
   let userRole = null;
   const token = localStorage.getItem('token');
@@ -23,24 +22,21 @@ const OrderPage = () => {
     }
   }
 
-  // All hooks must be at the top
   const [services, setServices] = useState([]);
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [loading, setLoading] = useState(true);
   const [service, setService] = useState(null);
   const [error, setError] = useState('');
+
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(null);
-  // Tailor orders hooks
-  const [tailorOrders, setTailorOrders] = useState([]);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [ordersError, setOrdersError] = useState('');
 
   useEffect(() => {
     const fetchService = async () => {
@@ -60,21 +56,6 @@ const OrderPage = () => {
     const foundService = services.find((s) => s._id === selectedServiceId);
     setService(foundService || null);
   }, [selectedServiceId, services]);
-
-  useEffect(() => {
-    if (userRole === 'tailor') {
-      setOrdersLoading(true);
-      api.get('/tailor/me/orders')
-        .then(res => {
-          setTailorOrders(res.data);
-          setOrdersError('');
-        })
-        .catch(err => {
-          setOrdersError(err.response?.data?.message || 'Could not load your assigned orders.');
-        })
-        .finally(() => setOrdersLoading(false));
-    }
-  }, [userRole]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -126,49 +107,6 @@ const OrderPage = () => {
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#F2E1C1] text-[#1C1F43]">
         <Loader2 className="animate-spin mb-4" size={48} />
         <p>Loading services...</p>
-      </div>
-    );
-  }
-
-  if (userRole === 'tailor') {
-    return (
-      <div className="min-h-screen bg-[#F2E1C1] py-10 px-4 md:px-8">
-        <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6 space-y-6">
-          <h1 className="text-3xl font-bold text-[#1C1F43] text-center mb-6">My Assigned Orders</h1>
-          {ordersLoading ? (
-            <div className="flex flex-col items-center justify-center py-10">
-              <Loader2 className="animate-spin mb-4" size={48} />
-              <p>Loading your orders...</p>
-            </div>
-          ) : ordersError ? (
-            <div className="text-red-600 text-center">{ordersError}</div>
-          ) : tailorOrders.length === 0 ? (
-            <div className="text-gray-500 text-center">No orders assigned to you yet.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="py-2 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Order ID</th>
-                    <th className="py-2 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</th>
-                    <th className="py-2 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Service</th>
-                    <th className="py-2 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {tailorOrders.map(order => (
-                    <tr key={order._id} className="hover:bg-gray-50">
-                      <td className="py-2 px-4 font-mono">{order._id?.slice(-8).toUpperCase() || 'N/A'}</td>
-                      <td className="py-2 px-4">{order.customer?.username || order.customerName || 'N/A'}</td>
-                      <td className="py-2 px-4">{order.service?.title || 'N/A'}</td>
-                      <td className="py-2 px-4">{order.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
       </div>
     );
   }

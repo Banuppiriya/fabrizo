@@ -77,7 +77,7 @@ const Login = () => {
         navigate('/tailor');
       } else {
         toast.success('Login successful!');
-        navigate('/home');
+        navigate('/services');
       }
     } catch (err) {
       console.error('Login error details:', err.response?.data || err.message || err);

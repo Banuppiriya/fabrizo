@@ -28,7 +28,7 @@ const Dashboard = () => {
       case 'tailor':
         navigate('/tailor');
       default:
-        navigate('/user');
+        navigate('/');
     }
   };
 
