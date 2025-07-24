@@ -32,22 +32,22 @@ const LiveStats = () => {
 
   switch (theme) {
     case 'dark':
-      sectionBgClass = 'bg-[#D2B48C]'; // Warm Brown
+      sectionBgClass = 'bg-gray-400'; // Warm Brown
       textColorClass = 'text-white';
-      buttonClass = 'bg-white text-[#D2B48C] hover:bg-gray-100';
+      buttonClass = 'bg-white text-[#001F3F] hover:bg-gray-200';
       buttonText = 'Switch to Clear Theme';
       break;
     case 'light':
       sectionBgClass = 'bg-white border-t border-b border-gray-200'; // Clear/Light
       textColorClass = 'text-gray-800';
-      buttonClass = 'bg-[#D2B48C] text-white hover:bg-[#B29D7D]';
+      buttonClass = 'bg-white text-[#001F3F] hover:bg-gray-200';
       buttonText = 'Switch to Navy Theme';
       break;
     case 'navy':
       // Updated: subtle linear gradient from a lighter navy to a regular navy
       sectionBgClass = 'bg-gradient-to-r from-[#003366] to-[#001F3F]'; // Light navy to navy gradient
       textColorClass = 'text-white';
-      buttonClass = 'bg-white text-[#001F3F] hover:bg-gray-100';
+      buttonClass = 'bg-white text-[#001F3F] hover:bg-gray-200';
       buttonText = 'Switch to Dark Theme';
       break;
     default:

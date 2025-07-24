@@ -1,4 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
+// import Measurements from './Measurements';
+
+// const toNumericMeasurements = (measurements) =>
+//   Object.fromEntries(
+//     Object.entries(measurements).map(([key, value]) => [key, Number(value) || 0])
+//   );
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/axiosInstance'; 
 import { Loader2, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
@@ -7,7 +13,26 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 
+
 const OrderPage = () => {
+  // All useState declarations at the top
+  // Measurements removed
+  const [services, setServices] = useState([]);
+  const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [service, setService] = useState(null);
+  const [error, setError] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [specialInstructions, setSpecialInstructions] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState(null);
+
+  // Measurements logic removed
+
   const navigate = useNavigate();
 
   // Get user role from token
@@ -22,27 +47,11 @@ const OrderPage = () => {
     }
   }
 
-  const [services, setServices] = useState([]);
-  const [selectedServiceId, setSelectedServiceId] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [service, setService] = useState(null);
-  const [error, setError] = useState('');
-
-  const [quantity, setQuantity] = useState(1);
-  const [specialInstructions, setSpecialInstructions] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState('');
-  const [submitSuccess, setSubmitSuccess] = useState(null);
-
   useEffect(() => {
     const fetchService = async () => {
       try {
         const { data } = await api.get('/services');
-        setServices(data);
+        setServices(Array.isArray(data.services) ? data.services : []);
       } catch (err) {
         setError('Failed to load services.');
       } finally {
@@ -57,6 +66,9 @@ const OrderPage = () => {
     setService(foundService || null);
   }, [selectedServiceId, services]);
 
+
+  // Measurements save handler removed
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -65,6 +77,9 @@ const OrderPage = () => {
       toast.error('Please fill all required fields.');
       return;
     }
+
+
+    // Measurements requirement removed
 
     const totalPrice = service?.price ? service.price * quantity : 0;
 
@@ -86,9 +101,11 @@ const OrderPage = () => {
         customerName,
         customerEmail,
         customerPhone,
+        totalAmount: totalPrice, // Add the total amount
       });
       const order = response.data;
       setSubmitSuccess(true);
+      window.dispatchEvent(new Event('orderPlaced'));
       toast.success('Order placed successfully! Redirecting to payment...');
       setTimeout(() => {
         navigate('/checkout', { state: { order } });
@@ -104,7 +121,7 @@ const OrderPage = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#F2E1C1] text-[#1C1F43]">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-200 text-[#1C1F43]">
         <Loader2 className="animate-spin mb-4" size={48} />
         <p>Loading services...</p>
       </div>
@@ -113,7 +130,7 @@ const OrderPage = () => {
 
   if (userRole !== 'customer') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#F2E1C1] text-[#1C1F43]">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-white text-[#1C1F43]">
         <XCircle className="mb-4 text-red-500" size={48} />
         <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
         <p className="text-lg">Only customers can place orders.</p>
@@ -124,10 +141,9 @@ const OrderPage = () => {
   return (
     <>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
-      <div className="bg-[#F2E1C1] min-h-screen py-10 px-4 md:px-8">
+      <div className="bg-gray-200 min-h-screen py-10 px-4 md:px-8">
         <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6 space-y-6">
           <h1 className="text-3xl font-bold text-[#1C1F43] text-center">Place Your Order</h1>
-
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block mb-1 font-medium text-[#1C1F43]">Select Service</label>
@@ -145,7 +161,6 @@ const OrderPage = () => {
                 ))}
               </select>
             </div>
-
             {service && (
               <div className="border rounded-md p-4 bg-gray-50">
                 <p className="text-gray-700 mb-2">{service.description}</p>
@@ -154,7 +169,8 @@ const OrderPage = () => {
                 </p>
               </div>
             )}
-
+            {/* Measurement section removed */}
+            {/* ...existing order form fields... */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block mb-1 font-medium text-[#1C1F43]">Quantity</label>
@@ -167,7 +183,6 @@ const OrderPage = () => {
                   required
                 />
               </div>
-
               <div className="md:col-span-2">
                 <label className="block mb-1 font-medium text-[#1C1F43]">Special Instructions</label>
                 <textarea
@@ -179,7 +194,6 @@ const OrderPage = () => {
                 />
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block mb-1 font-medium text-[#1C1F43]">Name</label>
@@ -212,7 +226,6 @@ const OrderPage = () => {
                 />
               </div>
             </div>
-
             <button
               type="submit"
               disabled={isSubmitting}

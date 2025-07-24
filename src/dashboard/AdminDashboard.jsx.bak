@@ -1,0 +1,775 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import api from '../utils/axiosInstance';
+import ServiceManager from '../pages/Services';
+import SidebarPaymentsWidget from '../components/SidebarPaymentsWidget';
+import AdminPayments from '../components/AdminPayments.jsx';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import NewsletterSubscribers from '../components/admin/NewsletterSubscribers';     
+
+
+
+const ITEMS_PER_PAGE = 10;
+
+const AdminDashboard = () => {
+  const [orders, setOrders] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentsError, setPaymentsError] = useState('');
+  const [users, setUsers] = useState([]);
+  const [tailors, setTailors] = useState([]);
+  const [contactMessages, setContactMessages] = useState([]);
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactError, setContactError] = useState('');
+  const [ordersCurrentPage, setOrdersCurrentPage] = useState(1);
+  const [ordersTotalItems, setOrdersTotalItems] = useState(0);
+  const [usersCurrentPage, setUsersCurrentPage] = useState(1);
+  const [usersTotalItems, setUsersTotalItems] = useState(0);
+  const [tailorsCurrentPage, setTailorsCurrentPage] = useState(1);
+  const [tailorsTotalItems, setTailorsTotalItems] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [activePage, setActivePage] = useState('orders');
+  const [selectedTailor, setSelectedTailor] = useState('');
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      let res;
+      switch (activePage) {
+        case 'orders':
+          res = await api.get('/orders', {
+            params: { page: ordersCurrentPage, limit: ITEMS_PER_PAGE }
+          });
+          if (res.data && res.data.orders) {
+            setOrders(res.data.orders);
+            setOrdersTotalItems(res.data.total || 0);
+          }
+          break;
+
+        case 'users':
+          res = await api.get('/user/all', {
+            params: { page: usersCurrentPage, limit: ITEMS_PER_PAGE }
+          });
+          if (res.data && res.data.users) {
+            setUsers(res.data.users);
+            setUsersTotalItems(res.data.total || 0);
+          }
+          break;
+
+        case 'tailors':
+          try {
+            // Fetch both all tailors and available tailors in parallel
+            const [tailorsRes, availableRes] = await Promise.all([
+              api.get('/tailor', {
+                params: { page: tailorsCurrentPage, limit: ITEMS_PER_PAGE }
+              }),
+              api.get('/tailor/available')
+            ]);
+            
+            // Set all tailors
+            if (tailorsRes.data && Array.isArray(tailorsRes.data.tailors)) {
+              setTailors(tailorsRes.data.tailors);
+              setTailorsTotalItems(tailorsRes.data.total || tailorsRes.data.tailors.length || 0);
+            }
+            
+            // Update available status for tailors
+            if (availableRes.data && Array.isArray(availableRes.data.tailors)) {
+              const availableIds = new Set(availableRes.data.tailors.map(t => t._id));
+              setTailors(prevTailors => 
+                prevTailors.map(tailor => ({
+                  ...tailor,
+                  available: availableIds.has(tailor._id)
+                }))
+              );
+            }
+          } catch (err) {
+            console.error('Error fetching tailors:', err);
+            const errorMessage = err.response?.data?.message || 'Failed to fetch tailors';
+            toast.error(errorMessage);
+            setError(errorMessage);
+          }
+          break;
+
+        case 'payments':
+          setPaymentsLoading(true);
+          setPaymentsError('');
+          try {
+            res = await api.get('/admin/payments');
+            if (res.data) {
+              setPayments(Array.isArray(res.data) ? res.data : []);
+            }
+          } catch (err) {
+            const errorMessage = err.response?.data?.message || 'Failed to fetch payments';
+            setPaymentsError(errorMessage);
+            toast.error(errorMessage);
+          } finally {
+            setPaymentsLoading(false);
+          }
+          break;
+
+        case 'contact':
+          setContactLoading(true);
+          setContactError('');
+          try {
+            res = await api.get('/contact');
+            if (res.data) {
+              setContactMessages(Array.isArray(res.data) ? res.data : []);
+            }
+          } catch (err) {
+            const errorMessage = err.response?.data?.message || 'Failed to fetch contact messages';
+            setContactError(errorMessage);
+            toast.error(errorMessage);
+          } finally {
+            setContactLoading(false);
+          }
+          break;
+
+        default:
+          break;
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || `Failed to fetch ${activePage}`;
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [activePage, ordersCurrentPage, usersCurrentPage, tailorsCurrentPage]);
+
+
+  useEffect(() => {
+    if (activePage !== 'services') fetchData();
+  }, [activePage, fetchData, usersCurrentPage, tailorsCurrentPage]);
+
+  useEffect(() => {
+    const fetchTailorsForAssignment = async () => {
+      // Fetch tailors only if we're on the orders tab and tailors data isn't loaded
+      if (activePage === 'orders' && (!Array.isArray(tailors) || tailors.length === 0)) {
+        try {
+          const res = await api.get('/tailor', {
+            params: { page: 1, limit: 100 } // Get more tailors for assignment
+          });
+          if (res.data && res.data.tailors) {
+            setTailors(res.data.tailors);
+          }
+        } catch (err) {
+          const errorMessage = err.response?.data?.message || 'Failed to load tailors for assignment';
+          console.error('Tailor fetch failed:', err);
+          toast.error(errorMessage);
+        }
+      }
+    };
+    fetchTailorsForAssignment();
+  }, [activePage, tailors]); // Dependency on 'tailors' to re-fetch if empty
+
+  const handleChangeOrderStatus = async (orderId, newStatus) => {
+    try {
+      // Validate status
+      if (!['pending', 'in progress', 'completed', 'cancelled'].includes(newStatus)) {
+        toast.error('Invalid order status');
+        return;
+      }
+
+      const response = await api.put(`/orders/${orderId}`, {
+        status: newStatus,
+        updatedBy: 'admin'
+      });
+
+      // Check if response has the expected structure
+      if (response.data?.success && response.data?.data?._id) {
+        const updatedOrder = response.data.data;
+        
+        setOrders((prev) => prev.map((o) => 
+          o._id === orderId ? { ...o, ...updatedOrder } : o
+        ));
+        
+        toast.success(response.data.message || `Order status updated to ${newStatus}`);
+        
+        // Optionally refresh the data to ensure sync
+        fetchData();
+      } else {
+        console.error('Unexpected response format:', response.data);
+        throw new Error('Invalid server response format');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to update order status';
+      toast.error(errorMessage);
+      
+      if (err.response?.status === 403) {
+        toast.error('You do not have permission to update order status');
+      } else if (err.response?.status === 400) {
+        toast.error('Invalid status or order data');
+      }
+      
+      console.error('Order status update failed:', {
+        error: err,
+        response: err.response?.data
+      });
+    }
+  };
+
+  const handleAssignTailor = async (order, tailorId) => {
+    try {
+      // Input validation
+      if (!tailorId || typeof tailorId !== 'string' || tailorId.length !== 24) {
+        toast.error('Please select a valid tailor before assigning.');
+        return;
+      }
+      if (order.tailor) {
+        toast.info('Order is already assigned to a tailor.');
+        return;
+      }
+      if (order.status !== 'pending') {
+        toast.error('Order must be pending to assign a tailor.');
+        return;
+      }
+
+      // Make API call with proper error handling
+      const response = await api.put(`/api/orders/${order._id}/assign-tailor`, {
+        tailorId: tailorId
+      });
+
+      // Handle successful response
+      if (response.data && response.data.success) {
+        toast.success('Tailor assigned successfully!');
+        await fetchData(); // Refresh the data
+      } else {
+        toast.warning('Assignment completed but you may need to refresh to see changes');
+      }
+    } catch (err) {
+      // Enhanced error handling
+      console.error('Tailor assignment failed:', {
+        error: err,
+        orderId: order._id,
+        tailorId: tailorId,
+        response: err.response?.data
+      });
+
+      // User-friendly error message
+      const errorMessage = err.response?.data?.message 
+        || err.message 
+        || 'Failed to assign tailor. Please try again.';
+      
+      toast.error(`Assignment failed: ${errorMessage}`);
+
+      // Handle specific error cases
+      if (err.response?.status === 404) {
+        toast.error('Order or tailor not found. Please refresh the page.');
+      } else if (err.response?.status === 403) {
+        toast.error('You do not have permission to assign tailors.');
+      }
+    }
+  };
+
+  const handleTailorStatusUpdate = async (tailorId) => {
+    try {
+      const response = await api.put(`/api/tailor/${tailorId}/toggle-availability`);
+      if (response.data.success) {
+        toast.success('Tailor status updated successfully');
+        await fetchData(); // Refresh the data
+      }
+    } catch (err) {
+      console.error('Failed to update tailor status:', err);
+      toast.error('Failed to update tailor status');
+    }
+  };
+
+  const handleLogout = () => {
+    toast.info('Logging out...');
+    localStorage.removeItem('token');
+    window.location.href = '/login'; // Redirect to login page
+  };
+
+  // Helper function for status badges
+  const getStatusBadgeClass = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'in progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'paid':
+        return 'bg-green-100 text-green-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      case 'refunded':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const renderTailorsList = () => {
+    if (loading) return <div className="text-center py-4">Loading tailors...</div>;
+    if (error) return <div className="text-red-500 text-center py-4">Error: {error}</div>;
+    if (!Array.isArray(tailors) || tailors.length === 0) return <div className="text-center py-4">No tailors found</div>;
+    
+    return (
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Name
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Experience
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {tailors.map((tailor) => (
+              <tr key={tailor._id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">{tailor.username}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-500">{tailor.email}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    tailor.available 
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {tailor.available ? 'Available' : 'Busy'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {tailor.experience || 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    onClick={() => handleTailorStatusUpdate(tailor._id)}
+                    className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded-md"
+                  >
+                    Toggle Status
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        
+        {/* Pagination */}
+        <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-700">
+              Showing {((tailorsCurrentPage - 1) * ITEMS_PER_PAGE) + 1} to {' '}
+              {Math.min(tailorsCurrentPage * ITEMS_PER_PAGE, tailorsTotalItems)} of {' '}
+              {tailorsTotalItems} results
+            </div>
+            <div className="flex-1 flex justify-end">
+              <button
+                onClick={() => setTailorsCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={tailorsCurrentPage === 1}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed mr-2"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setTailorsCurrentPage(prev => prev + 1)}
+                disabled={tailorsCurrentPage * ITEMS_PER_PAGE >= tailorsTotalItems}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  };
+
+  const renderContent = () => {
+    switch (activePage) {
+      case 'orders':
+        return (
+          <>
+            <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-100">
+              <h3 className="text-3xl font-extrabold text-gray-900 mb-8 text-center sm:text-left">
+                All Orders
+              </h3>
+              {loading ? (
+                <div className="text-center py-10 text-gray-600">Loading orders...</div>
+              ) : error ? (
+                <div className="text-center py-10 text-red-600">{error}</div>
+              ) : orders.length === 0 ? (
+                <div className="text-center py-10 text-gray-500 text-lg font-medium">No orders found.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white rounded-md">
+                    <thead>
+                      <tr className="bg-gray-100 text-gray-700 uppercase text-sm leading-normal">
+                        <th className="py-3 px-6 text-left">Order ID</th>
+                        <th className="py-3 px-6 text-left">Customer</th>
+                        <th className="py-3 px-6 text-left">Service</th>
+                        <th className="py-3 px-6 text-left">Payment Status</th>
+                        <th className="py-3 px-6 text-left">Order Status</th>
+                        <th className="py-3 px-6 text-left">Assigned Tailor</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-800 text-sm">
+                      {orders.map((order) => (
+                        <tr key={order._id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150">
+                          <td className="py-3 px-6 whitespace-nowrap">{order._id.substring(0, 8)}...</td> {/* Shorten ID */}
+                          <td className="py-3 px-6">{order.customerName || order.user?.username || 'N/A'}</td>
+                          <td className="py-3 px-6">{order.service?.name || 'N/A'}</td>
+                          <td className="py-3 px-6">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadgeClass(order.paymentStatus)}`}>
+                              {order.paymentStatus?.charAt(0).toUpperCase() + order.paymentStatus?.slice(1) || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-6">
+                            <select
+                              value={order.status}
+                              onChange={(e) => handleChangeOrderStatus(order._id, e.target.value)}
+                              className="border border-gray-400 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition"
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="in progress">In Progress</option>
+                              <option value="completed">Completed</option>
+                              <option value="cancelled">Cancelled</option> {/* Added cancelled status */}
+                            </select>
+                          </td>
+                          <td className="py-3 px-6">
+                            {order.status !== 'pending' || order.tailor ? (
+                              <div className="text-xs text-gray-500 py-2">
+                                {order.tailor ? `Assigned to ${order.tailor.username}` : 'Order already assigned'}
+                              </div>
+                            ) : (
+                              <select
+                                value={order.tailor?._id || ''}
+                                onChange={(e) => {
+                                  const selectedId = e.target.value;
+                                  if (!selectedId || selectedId === '' || selectedId.length !== 24) {
+                                    toast.info('Please select a valid tailor to assign.');
+                                    return;
+                                  }
+                                  if (order.status !== 'pending') {
+                                    toast.error('Order must be pending to assign a tailor.');
+                                    return;
+                                  }
+                                  if (order.tailor) {
+                                    toast.error('Order is already assigned to a tailor.');
+                                    return;
+                                  }
+                                  handleAssignTailor(order, selectedId);
+                                }}
+                                className="border border-gray-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition"
+                                disabled={!!order.tailor || order.status !== 'pending'}
+                              >
+                                <option value="">Unassigned</option>
+                                {tailors.map((tailor) => (
+                                  <option key={tailor._id} value={tailor._id}>
+                                    {tailor.username}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            {ordersTotalItems > ITEMS_PER_PAGE && (
+              <PaginationControls
+                currentPage={ordersCurrentPage}
+                totalItems={ordersTotalItems}
+                itemsPerPage={ITEMS_PER_PAGE}
+                onPageChange={setOrdersCurrentPage}
+              />
+            )}
+          </>
+        );
+      case 'users':
+        return (
+          <>
+            <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-100 min-h-[400px] flex flex-col">
+              <h3 className="text-3xl font-extrabold text-gray-900 mb-8 text-center sm:text-left">
+                All Platform Users
+              </h3>
+              {loading ? (
+                <div className="text-center py-10 text-gray-600">Loading users...</div>
+              ) : error ? (
+                <div className="text-center py-10 text-red-600">{error}</div>
+              ) : users.length === 0 ? (
+                <div className="flex-grow flex items-center justify-center">
+                  <p className="text-center py-8 text-gray-500 text-xl font-medium">No users found.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {users.map((user) => (
+                      <li key={user._id} className="bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 ease-in-out p-5 flex items-center space-x-5">
+                        <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center text-2xl font-bold text-white flex-shrink-0 shadow-inner">
+                          {user.username?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                        <div className="flex-grow">
+                          <p className="text-xl font-semibold text-gray-900 truncate">
+                            {user.username || 'N/A'}
+                          </p>
+                          <p className="text-sm text-gray-600 truncate">
+                            {user.email || 'No email provided'}
+                          </p>
+                          <p className="text-sm font-medium text-gray-900 mt-1 capitalize">
+                            Role: {user.role || 'N/A'}
+                          </p>
+                          {user.orders && (
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Orders: {user.orders.length > 0 ? user.orders.length : '0'}
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            {usersTotalItems > ITEMS_PER_PAGE && (
+              <PaginationControls
+                currentPage={usersCurrentPage}
+                totalItems={usersTotalItems}
+                itemsPerPage={ITEMS_PER_PAGE}
+                onPageChange={setUsersCurrentPage}
+              />
+            )}
+          </>
+        );
+      case 'tailors':
+        return (
+          <>
+            <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-100 min-h-[400px] flex flex-col">
+              <h3 className="text-3xl font-extrabold text-gray-900 mb-8 text-center sm:text-left">
+                All Tailors
+              </h3>
+              {loading ? (
+                <div className="text-center py-10 text-gray-600">Loading tailors...</div>
+              ) : error ? (
+                <div className="text-center py-10 text-red-600">{error}</div>
+              ) : tailors.length === 0 ? (
+                <div className="flex-grow flex items-center justify-center">
+                  <p className="text-center py-8 text-gray-500 text-xl font-medium">No tailors found.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {tailors.map((tailor) => (
+                      <li key={tailor._id} className="bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 ease-in-out p-5 flex items-center space-x-5">
+                        <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center text-2xl font-bold text-white flex-shrink-0 shadow-inner">
+                          {tailor.username?.charAt(0).toUpperCase() || 'T'}
+                        </div>
+                        <div className="flex-grow">
+                          <p className="text-xl font-semibold text-gray-900 truncate">
+                            {tailor.username || 'N/A'}
+                          </p>
+                          <p className="text-sm text-gray-600 truncate">
+                            {tailor.email || 'No email provided'}
+                          </p>
+                          <p className="text-sm font-medium text-gray-900 mt-1 italic">
+                            Specialization: {tailor.specialization || 'N/A'}
+                          </p>
+                          {/* Assuming tailors also have an 'orders' array */}
+                          {tailor.orders && (
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Assigned Orders: {tailor.orders.length > 0 ? tailor.orders.length : '0'}
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            {tailorsTotalItems > ITEMS_PER_PAGE && (
+              <PaginationControls
+                currentPage={tailorsCurrentPage}
+                totalItems={tailorsTotalItems}
+                itemsPerPage={ITEMS_PER_PAGE}
+                onPageChange={setTailorsCurrentPage}
+              />
+            )}
+          </>
+        );
+      case 'services':
+        return <ServiceManager />;
+      case 'contact':
+        return (
+          <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-100 min-h-[400px]">
+            <h3 className="text-3xl font-extrabold text-gray-900 mb-8 text-center sm:text-left">
+              Contact Messages
+            </h3>
+            {contactLoading ? (
+              <div className="text-center py-10 text-gray-600">Loading messages...</div>
+            ) : contactError ? (
+              <div className="text-center py-10 text-red-600">{contactError}</div>
+            ) : contactMessages.length === 0 ? (
+              <div className="text-center py-10 text-gray-500 text-lg font-medium">No messages found.</div>
+            ) : (
+              <div>
+                {contactMessages.map((msg) => (
+                  <div key={msg._id} className="border p-4 mb-4 rounded-md shadow-sm bg-gray-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <strong className="text-gray-900">{msg.name}</strong>
+                        <span className="text-gray-500 text-sm"> ({msg.email})</span>
+                        <span className="text-gray-500 text-sm ml-2">Phone: {msg.phone }</span>
+                        <span className="text-purple-700 text-xs ml-2">Role: {msg.role }</span>
+                      </div>
+                      <div className="text-gray-400 text-xs">
+                        {new Date(msg.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="text-gray-800 font-medium">{msg.message}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      case 'payments':
+        return <AdminPayments payments={payments} loading={paymentsLoading} error={paymentsError} />;
+      case 'newsletter':
+        return <NewsletterSubscribers />;
+      default:
+        return null;
+    }
+  };
+
+  const buttonClass = (active) =>
+    `block w-full text-left px-4 py-3 rounded-lg text-base font-medium transition-colors duration-200 ease-in-out ${
+      active
+        ? 'bg-gray-600 text-white shadow-md'
+        : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'
+    }`;
+
+  return (
+    <div className="flex h-screen bg-gray-100 font-sans">
+      <aside className="w-64 bg-white shadow-xl p-6 flex flex-col justify-between border-r border-gray-200">
+        <div>
+          <h2 className="text-3xl font-extrabold text-gray-600 mb-8 tracking-tight">Admin Dashboard</h2>
+          <nav className="space-y-3">
+            <button onClick={() => setActivePage('orders')} className={buttonClass(activePage === 'orders')}>
+              Orders
+            </button>
+            <button onClick={() => setActivePage('users')} className={buttonClass(activePage === 'users')}>
+              Users
+            </button>
+            <button onClick={() => setActivePage('tailors')} className={buttonClass(activePage === 'tailors')}>
+              Tailors
+            </button>
+            <button onClick={() => setActivePage('services')} className={buttonClass(activePage === 'services')}>
+              Services
+            </button>
+            <button onClick={() => setActivePage('contact')} className={buttonClass(activePage === 'contact')}>
+              Contact Messages
+            </button>
+            <button onClick={() => setActivePage('payments')} className={buttonClass(activePage === 'payments')}>
+              Payments
+            </button>
+            <button onClick={() => setActivePage('newsletter')} className={buttonClass(activePage === 'newsletter')}>
+              Newsletter Subscribers
+            </button>
+          </nav>
+          {activePage === 'payments' && <SidebarPaymentsWidget />}
+        </div>
+      </aside>
+      <main className="flex-1 overflow-y-auto p-8 bg-gray-100">
+        {renderContent()}
+      </main>
+    </div>
+  );
+};
+
+const PaginationControls = ({ currentPage, totalItems, itemsPerPage, onPageChange }) => {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const pages = [];
+
+  for (let i = 1; i <= totalPages; i++) {
+    pages.push(i);
+  }
+
+  if (totalPages <= 1) return null; // Don't show pagination if only one page
+
+  return (
+    <div className="flex justify-center gap-2 mt-4">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+      >
+        Previous
+      </button>
+      {pages.map(page => (
+        <button
+          key={page}
+          onClick={() => onPageChange(page)}
+          className={`px-3 py-1 rounded ${
+            currentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200'
+          }`}
+        >
+          {page}
+        </button>
+      ))}
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+      >
+        Next
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="flex justify-center mt-8 space-x-2">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage <= 1}
+        className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+      >
+        Previous
+      </button>
+      {pages.map((page) => (
+        <button
+          key={page}
+          onClick={() => onPageChange(page)}
+          className={`px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition ${
+            currentPage === page
+              ? 'bg-gray-600 text-white shadow-gray-300/50'
+              : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'
+          }`}
+        >
+          {page}
+        </button>
+      ))}
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+      >
+        Next
+      </button>
+    </div>
+  );
+};
+
+export default AdminDashboard;

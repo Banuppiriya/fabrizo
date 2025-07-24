@@ -58,7 +58,7 @@ const handleSendPaymentRequest = async (orderId) => {
       ) : (
         <div className="overflow-auto rounded shadow-sm border">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-[#F5F5F5]">
+            <thead className="bg-gray-100 text-white">
               <tr>
                 <th className="p-3 text-left text-sm font-semibold">Order ID</th>
                 <th className="p-3 text-left text-sm font-semibold">Customer</th>

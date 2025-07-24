@@ -59,42 +59,42 @@ const services = [
     title: 'Custom Suits',
     image: '/src/assets/customsuits.jpg',
     description: 'Experience the unparalleled elegance of a suit tailored exclusively for you.',
-    price: 65000.00,
+    price: 5000.00,
     features: ['Personalized fittings', 'Premium fabric selection', 'Hand-stitched details', 'Lifetime adjustments'],
   },
   {
     title: 'Sherwani & Tuxedos',
     image: '/src/assets/sherwani.jpg',
     description: 'Make a statement with our exquisite Sherwanis and Tuxedos.',
-    price: 75000.00,
+    price: 3000.00,
     features: ['Luxurious materials', 'Intricate embroidery', 'Modern & classic designs', 'Event-ready delivery'],
   },
   {
     title: 'Wedding Attire',
     image: '/src/assets/wedding.jpg',
     description: 'We craft timeless wedding suits and attire that reflect your unique love story.',
-    price: 80000.00,
+    price: 8000.00,
     features: ['Groom & Groomsmen packages', 'Fabric matching', 'Theme coordination', 'Express tailoring'],
   },
   {
     title: 'Shirt & Trousers',
     image: '/src/assets/shirt.jpg',
     description: 'Elevate your daily style with custom-tailored shirts and trousers.',
-    price: 15000.00,
+    price: 2500.00,
     features: ['Wide range of fabrics', 'Custom collar & cuff styles', 'Perfect silhouette', 'Durable stitching'],
   },
   {
     title: 'Alterations & Repairs',
     image: '/src/assets/alter.jpg',
     description: 'Breathe new life into your beloved garments with expert alterations.',
-    price: 5000.00,
+    price: 500.00,
     features: ['Resizing', 'Zipper & button repair', 'Hemming', 'Fabric reinforcement'],
   },
   {
     title: 'Corporate Uniforms',
     image: '/src/assets/corporate.jpg',
     description: 'Project professionalism with custom-designed corporate uniforms.',
-    price: 25000.00,
+    price: 1500.00,
     features: ['Bulk discounts', 'Logo embroidery', 'Various styles', 'Durable fabrics'],
   },
 ];
@@ -159,26 +159,43 @@ const Home = () => {
   }, [setupIntersectionObserver]);
 
   return (
-    <main className="bg-[#F2E1C1] font-['Montserrat']">
+    <main className="bg-gray-200 font-['Montserrat']">
 
       {/* Hero Section */}
-      <section className="relative h-screen bg-cover bg-center flex items-center justify-center text-white" style={{ backgroundImage: `url(${backgroundImage})` }}>
-        <div className="absolute inset-0 bg-black opacity-50 z-10"></div>
-        <div className="relative z-20 text-center p-8">
-          <h1 className={`text-5xl md:text-6xl font-['Playfair_Display'] font-bold mb-6 transition-all duration-1000 ease-out ${heroVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-            Experience True Tailoring
-          </h1>
-          <p className={`text-lg md:text-xl mb-8 max-w-3xl mx-auto transition-all duration-1000 ease-out delay-200 ${heroVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-            From bespoke suits to custom dresses, we craft garments uniquely yours.
-          </p>
-          <button onClick={scrollToServices} className={`group relative inline-flex items-center justify-center rounded-full bg-[#B26942] py-4 px-6 font-bold text-[#F2E1C1] shadow-xl transition-all duration-300 ease-out hover:scale-105 hover:shadow-2xl delay-400 ${heroVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-            <span className="relative flex items-center">
-              Explore Our Services
-              <ArrowRight className="ml-2 transition-transform duration-300 group-hover:translate-x-1" size={20} />
-            </span>
-          </button>
-        </div>
-      </section>
+      <section
+  className="relative h-screen bg-cover bg-center flex items-center justify-center text-white"
+  style={{
+    backgroundImage: `url(${backgroundImage})`,
+    backgroundAttachment: 'fixed', // optional parallax effect
+  }}
+>
+  {/* Blur & Dark Overlay */}
+  <div className="absolute inset-0 backdrop-blur-sm bg-black/50 z-10"></div>
+
+  <div className="relative z-20 text-center px-4 md:px-8">
+    {/* Description Line – ABOVE headline */}
+    <p className={`text-md md:text-xl text-theme-text mb-4 transition-all duration-1000 ease-out delay-100 ${heroVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+      From bespoke suits to custom dresses, we craft garments uniquely yours.
+    </p>
+
+    {/* Headline */}
+    <h1 className={`text-4xl md:text-6xl font-['Playfair_Display'] font-bold text-white transition-all duration-1000 ease-out ${heroVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+      Experience True Tailoring
+    </h1>
+
+    {/* CTA Button */}
+    <button
+      onClick={scrollToServices}
+      className={`group relative inline-flex items-center justify-center rounded-full mt-10 bg-[#B26942] py-4 px-6 font-bold text-white shadow-xl transition-all duration-300 ease-out hover:scale-105 hover:shadow-2xl delay-300 ${heroVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}
+    >
+      <span className="relative flex items-center">
+        Explore Our Services
+        <ArrowRight className="ml-2 transition-transform duration-300 group-hover:translate-x-1" size={20} />
+      </span>
+    </button>
+  </div>
+</section>
+
 
       {/* Stats */}
       <section className="py-12 bg-white">
@@ -188,7 +205,7 @@ const Home = () => {
       </section>
 
       {/* Carousel */}
-      <section className="py-12 bg-[#F2E1C1]">
+      <section className="py-12 bg-gray-200">
         <DemoCarousel />
       </section>
 
@@ -200,21 +217,21 @@ const Home = () => {
       </section>
 
       {/* Blog Preview */}
-      <section className="py-16 bg-[#F2E1C1]">
+      <section className="py-16 bg-gray-200">
         <div className="container mx-auto px-6">
           <BlogPreview />
         </div>
       </section>
 
       {/* Services Section */}
-      <section id="services" ref={servicesRef} className="py-20 bg-[#f7f7f7] font-['Montserrat']">
+      <section id="services" ref={servicesRef} className="py-20 bg-gray-300 font-['Montserrat']">
         <div className="container mx-auto px-6 max-w-7xl">
           <div ref={servicesHeadingRef} className="text-center mb-16">
             <h2 className={`text-5xl font-['Playfair_Display'] font-extrabold text-[#1C1F43] mb-4 transition-all duration-700 ease-out ${servicesHeadingVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-              Our Masterful Creations
+              <span className="text-theme-heading">Our Masterful Creations</span>
             </h2>
             <p className={`text-xl text-[#3B3F4C] max-w-3xl mx-auto transition-all duration-700 ease-out delay-200 ${servicesHeadingVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-              Discover the art of bespoke tailoring. Each service reflects timeless elegance.
+              <span className="text-theme-text">Discover the art of bespoke tailoring. Each service reflects timeless elegance.</span>
             </p>
           </div>
 
@@ -266,10 +283,10 @@ const Home = () => {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="py-20 bg-[#f7f7f7]">
+      <section id="contact" className="py-20 bg-gray-200">
         <div className="container mx-auto px-6">
           <h2 ref={contactHeadingRef} className={`text-4xl font-['Playfair_Display'] font-bold mb-8 text-center text-[#1C1F43] transition-all duration-700 ease-out ${contactHeadingVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-            Get in Touch with Our Tailors
+            <span className="text-theme-heading">Get in Touch with Our Tailors</span>
           </h2>
           <div ref={contactFormRef} className={`max-w-3xl mx-auto bg-white p-8 rounded-lg shadow-lg transition-all duration-700 ease-out delay-200 ${contactFormVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
             <form className="space-y-6">

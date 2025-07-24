@@ -13,6 +13,9 @@ const Services = () => {
   const [currentService, setCurrentService] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionServiceId, setActionServiceId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const ITEMS_PER_PAGE = 5;
 
   const navigate = useNavigate();
 
@@ -20,19 +23,23 @@ const Services = () => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.get('/services');
-      const formattedServices = data.map(service => ({
+      const { data } = await api.get('/services', {
+        params: { page: currentPage, limit: ITEMS_PER_PAGE },
+      });
+      const serviceArr = Array.isArray(data.services) ? data.services : [];
+      const formattedServices = serviceArr.map(service => ({
         ...service,
         isActive: service.hasOwnProperty('isActive') ? service.isActive : true,
       }));
       setServices(formattedServices);
+      setTotalItems(data.total || 0);
     } catch (err) {
       console.error('Error fetching services:', err);
       setError('Failed to load services. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage]);
 
   useEffect(() => {
     fetchServices();
@@ -128,12 +135,13 @@ const Services = () => {
     <div className="bg-gray-300 py-12 min-h-screen font-['Montserrat']">
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-          <h1 className="text-4xl font-extrabold font-['Playfair_Display'] text-[#1C1F43]">
+          <h1 className="text-4xl font-extrabold font-['Playfair_Display']" style={{ color: '#1C1F43' }}>
             Manage Tailoring Services
           </h1>
           <button
             onClick={handleAddService}
-            className="bg-[#1C1F43] hover:bg-[#3B3F4C] text-[#F2E1C1] font-semibold py-3 px-6 rounded-lg flex items-center text-lg shadow-lg hover:shadow-xl group"
+            className="font-semibold py-3 px-6 rounded-lg flex items-center text-lg shadow-lg hover:shadow-xl group"
+            style={{ backgroundColor: '#1C1F43', color: '#F2E1C1' }}
             disabled={actionLoading}
           >
             {actionLoading && actionServiceId === null ? (
@@ -144,7 +152,6 @@ const Services = () => {
             Add New Service
           </button>
         </div>
-
         {services.length === 0 ? (
           <div className="text-center text-xl text-[#3B3F4C] py-20 bg-white rounded-lg shadow-xl border border-gray-200">
             No services found. Click "Add New Service" to get started!
@@ -155,7 +162,7 @@ const Services = () => {
               <div
                 key={service._id}
                 className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col cursor-pointer"
-                onClick={handleCardClick}  // NO ID passed now
+                onClick={handleCardClick}
               >
                 <div className="relative h-48 w-full">
                   {service.imageUrl ? (
@@ -244,6 +251,39 @@ const Services = () => {
           onSuccess={handleModalClose}
           serviceToEdit={currentService}
         />
+      )}
+
+      {/* Pagination Controls */}
+      {totalItems > ITEMS_PER_PAGE && (
+        <div className="flex justify-center mt-8 space-x-2">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage <= 1}
+            className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            Previous
+          </button>
+          {Array.from({ length: Math.ceil(totalItems / ITEMS_PER_PAGE) }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition ${
+                currentPage === page
+                  ? 'bg-indigo-600 text-white shadow-indigo-300/50'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+            disabled={currentPage >= Math.ceil(totalItems / ITEMS_PER_PAGE)}
+            className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            Next
+          </button>
+        </div>
       )}
     </div>
   );

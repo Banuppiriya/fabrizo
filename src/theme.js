@@ -3,7 +3,7 @@ const theme = {
   colors: {
     primary: '#B26942',       // Rustic Copper
     secondary: '#F2E1C1',      // Creamy Beige
-    background: '#F2E1C1',     // Creamy Beige
+    background: '#ffffffff',     // Creamy Beige
     text: '#3B3F4C',          // Cool Slate Gray
     textSecondary: '#6B7280', // Slightly lighter gray for labels
     white: '#FFFFFF',

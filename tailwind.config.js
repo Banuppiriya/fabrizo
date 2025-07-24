@@ -1,13 +1,12 @@
 /** @type {import('tailwindcss').Config} */
-// Tailwind config disabled for CDN usage
-export default {
-  content: [],
+module.exports = {
+  darkMode: 'class',
+  content: [
+    './index.html',
+    './src/**/*.{js,jsx,ts,tsx}',
+  ],
   theme: {
     extend: {},
   },
   plugins: [],
-}
-module.exports = {
-  darkMode: 'class',
-  // ...
-}
+};

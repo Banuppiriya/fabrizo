@@ -1,6 +1,7 @@
 import React from 'react';
 import theme from '../theme'; // Corrected: Removed curly braces for default import
 import { FaPhone, FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa';
+import axios from 'axios';
 
 const Contact = () => {
   const contactInfo = [
@@ -10,14 +11,19 @@ const Contact = () => {
   ];
 
   // Placeholder for form submission logic
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert('Message sent! (This is a placeholder. Implement actual API call)');
-    // In a real application, you would collect form data and send it to your backend
-    // e.g., const formData = new FormData(e.target);
-    // const name = formData.get('name'); // Assuming name="name" for input fields
-    // console.log({ name, email, message });
-    // api.post('/contact', { name, email, message });
+    const formData = new FormData(e.target);
+    const name = formData.get('name');
+    const email = formData.get('email');
+    const message = formData.get('message');
+    const role = formData.get('role'); // Added role field
+    try {
+      await axios.post('/contact', { name, email, message });
+      alert('Message sent!');
+    } catch (error) {
+      alert('Failed to send message. Please try again later.');
+    }
   };
 
 
@@ -71,7 +77,7 @@ const Contact = () => {
             </div>
             {/* Added styling for the image to blend better */}
             <img
-              src="/src/assets/background1.jpg" // Ensure this path is correct relative to your project root
+              src="/src/assets/logiin.jpg" // Ensure this path is correct relative to your project root
               alt="Contact"
               className="w-full h-64 object-cover rounded-lg shadow-lg border border-gray-200"
               style={{ borderColor: theme.colors.border }}

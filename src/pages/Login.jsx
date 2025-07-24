@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../utils/axiosInstance';
-import loginImage from '../assets/login.jpg';
+import loginImage from '../assets/logiin.jpg';
 import { Loader2 } from 'lucide-react';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
 
 // Helper function to decode and validate token
 const decodeToken = (token) => {
@@ -27,6 +28,37 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, user } = useAuth();
+  
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      const redirectPath = getRedirectPath(user.role);
+      navigate(redirectPath, { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Helper function to determine redirect path
+  const getRedirectPath = (role) => {
+    switch(role?.toLowerCase()) {
+      case 'admin':
+        return '/admin/dashboard';
+      case 'tailor':
+        return '/tailor/dashboard';
+      case 'customer':
+        return '/services';
+      default:
+        return '/services';
+    }
+  };
+
+  // Clear form data when component unmounts
+  React.useEffect(() => {
+    return () => {
+      setFormData({ email: '', password: '' });
+    };
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -38,50 +70,74 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const payload = {
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password,
-      };
+      // Validate input
+      const email = formData.email.trim().toLowerCase();
+      const password = formData.password;
 
-      const { data } = await api.post('auth/login', payload);
-
-      if (!data.token || typeof data.token !== 'string') {
-        setError("Invalid token received from server.");
+      if (!email || !password) {
+        setError('Please provide both email and password');
         setLoading(false);
         return;
       }
 
-      localStorage.setItem('token', data.token);
-      const decodedToken = decodeToken(data.token);
+      // Only clear auth-related items
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      const response = await api.post('/auth/login', {
+        email: email.trim().toLowerCase(),
+        password: password.trim()
+      });
 
-      if (!decodedToken) {
-        setError("Login failed: Invalid or expired token received.");
-        localStorage.removeItem('token');
-        setLoading(false);
-        return;
+      const { data } = response;
+      
+      if (!data?.token || !data?.user) {
+        throw new Error('Invalid response from server');
       }
 
+      // Try to login using the auth context
+      const success = await login({
+        token: data.token,
+        user: {
+          ...data.user,
+          lastLogin: new Date().toISOString()
+        }
+      });
 
-      // Store the full decoded token (with exp, role, etc.) for persistence
-      localStorage.setItem('user', JSON.stringify(decodedToken));
-      console.log('User data stored:', decodedToken);
-
-      // Role-based redirect (use backend's redirectTo if present, else fallback)
-      if (data.redirectTo) {
-        navigate(data.redirectTo);
-      } else if (decodedToken.role?.toLowerCase() === 'admin') {
-        toast.success('Login successful!');
-        navigate('/admin');
-      } else if (decodedToken.role?.toLowerCase() === 'tailor') {
-        toast.success('Login successful!');
-        navigate('/tailor');
-      } else {
-        toast.success('Login successful!');
-        navigate('/services');
+      if (!success) {
+        throw new Error('Failed to initialize session');
       }
+
+      // Show success message
+      toast.success('Login successful!');
+
+      // Handle redirect based on role
+      const redirectPath = getRedirectPath(data.user.role);
+      navigate(redirectPath, { replace: true });
+
+      // Use replace instead of push to prevent back button issues
+      navigate(redirectPath, { replace: true });
+
     } catch (err) {
-      console.error('Login error details:', err.response?.data || err.message || err);
-      setError(err.response?.data?.message || 'Login failed. Please check your email and password.');
+      console.error('Login error:', err);
+      
+      let errorMsg = 'Login failed. Please try again later.';
+      
+      if (err.response) {
+        if (err.response.status === 400) {
+          errorMsg = err.response.data?.message || 'Please check your input and try again.';
+        } else if (err.response.status === 500) {
+          errorMsg = 'Server error. Please try again later.';
+        } else {
+          errorMsg = err.response.data?.message || 'Invalid credentials. Please try again.';
+        }
+        setFormData(prev => ({ ...prev, password: '' }));
+      } else if (err.request) {
+        errorMsg = 'Unable to reach the server. Please check your internet connection.';
+      }
+
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }

@@ -109,8 +109,8 @@ const BlogAdmin = () => {
           value={form.slug}
           onChange={handleChange}
           placeholder="Slug (e.g. fabric-selection)"
-          className="w-full p-2 border rounded"
-          required
+          className="w-full p-2 border rounded mb-2"
+          style={{ borderColor: theme.colors?.border }}
           disabled={!!editing}
         />
         <input

@@ -83,7 +83,7 @@ const Measurements = ({ serviceId }) => {
       const numericUpperBody = toNumericMeasurements(upperBody);
       const numericLowerBody = toNumericMeasurements(lowerBody);
 
-      await api.post('/measurements', { upperBody: numericUpperBody, lowerBody: numericLowerBody });
+      await api.post('/measurements/my', { upperBody: numericUpperBody, lowerBody: numericLowerBody });
       setSuccess('Measurements saved successfully!');
     } catch (err) {
       console.error(err);
@@ -118,7 +118,7 @@ const Measurements = ({ serviceId }) => {
       const numericUpperBody = toNumericMeasurements(upperBody);
       const numericLowerBody = toNumericMeasurements(lowerBody);
 
-      await api.post('/order', {
+      await api.post('/orders', {
         service: serviceId,
         designDetails: 'Custom design', // You can make this dynamic too
         measurements: {
@@ -127,6 +127,10 @@ const Measurements = ({ serviceId }) => {
         },
       });
       setOrderSuccess('Order created successfully!');
+      // Redirect to admin dashboard so new order appears for tailor assignment
+      setTimeout(() => {
+        window.location.href = '/admin';
+      }, 1500);
     } catch (err) {
       console.error(err);
       setOrderError('Failed to create order.');
@@ -198,20 +202,7 @@ const Measurements = ({ serviceId }) => {
         </button>
       </form>
 
-      <hr className="my-6" />
-
-      <div>
-        <h2 className="text-xl font-semibold mb-3">Create Order with These Measurements</h2>
-        {orderError && <p className="text-red-600 mb-3">{orderError}</p>}
-        {orderSuccess && <p className="text-green-600 mb-3">{orderSuccess}</p>}
-        <button
-          onClick={handleCreateOrder}
-          disabled={creatingOrder}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
-        >
-          {creatingOrder ? 'Creating Order...' : 'Create Order'}
-        </button>
-      </div>
+      {/* Removed Create Order button and related logic. Measurements page now only saves measurements. */}
     </div>
   );
 };

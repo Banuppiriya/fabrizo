@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../utils/axiosInstance';
 import { Edit, Save, X, Image as ImageIcon, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 // import toast from 'react-hot-toast';
 
 // This theme object helps manage consistent styling.
@@ -23,59 +24,32 @@ const theme = {
 };
 
 const Profile = () => {
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { user, loading: authLoading, error: authError } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [originalFormData, setOriginalFormData] = useState({ username: '', email: '', profilePicture: '' });
   const [formData, setFormData] = useState({ username: '', email: '', profilePicture: '' });
-
-  // New state for profile picture upload
+  const [originalFormData, setOriginalFormData] = useState({ username: '', email: '', profilePicture: '' });
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
-  const fileInputRef = useRef(null); // Ref for file input to trigger click
-  const navigate = useNavigate(); // Initialize useNavigate
+  const [error, setError] = useState('');
+  const fileInputRef = useRef(null);
+  const navigate = useNavigate();
 
-  // Fetch user profile data on component mount
+  // Initialize form data from user profile
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        // Debug: print the token and headers being sent
-        const token = localStorage.getItem('token');
-        console.log('Profile.jsx: token in localStorage:', token);
-        const { data } = await api.get('/user/profile', {
-          headers: {
-            // This will override the default if set, but also lets us log it
-            Authorization: token ? `Bearer ${token}` : undefined,
-          },
-        });
-        setProfile(data);
-        const initialData = {
-          username: data.username || '',
-          email: data.email || '',
-          profilePicture: data.profilePicture || '' // Fetch existing profile picture URL
-        };
-        setFormData(initialData);
-        setOriginalFormData(initialData);
-        if (data.profilePicture) {
-          setFilePreviewUrl(data.profilePicture); // Set preview if picture exists
-        }
-      } catch (err) {
-        if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setError('');
-          navigate('/login', { replace: true }); // Use navigate for SPA-friendly redirect
-          return;
-        }
-        console.error("Error fetching profile:", err);
-        setError('Failed to fetch profile data. Please try again.');
-      } finally {
-        setLoading(false);
+    if (user) {
+      const initialData = {
+        username: user.username || '',
+        email: user.email || '',
+        profilePicture: user.profilePicture || ''
+      };
+      setFormData(initialData);
+      setOriginalFormData(initialData);
+      if (user.profilePicture) {
+        setFilePreviewUrl(user.profilePicture);
       }
-    };
-    fetchProfile();
-  }, [navigate]);
+    }
+  }, [user]);
+  // (Remove this entire block; it is misplaced and duplicates logic already present in your useEffect above)
 
   // Handle file selection
   const handleFileChange = (e) => {
@@ -109,7 +83,6 @@ const Profile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true); // Set loading for submission
 
     let uploadedImageUrl = formData.profilePicture; // Start with current image
 
@@ -118,52 +91,47 @@ const Profile = () => {
         // Step 1: Upload the new profile picture if a file is selected
         const uploadFormData = new FormData();
         uploadFormData.append('profilePicture', selectedFile);
-
-        // IMPORTANT: Replace '/api/upload/profile-picture' with your actual backend upload endpoint
-        // This endpoint should return the URL of the uploaded image.
         const uploadRes = await api.post('/upload/profile-picture', uploadFormData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         });
-        uploadedImageUrl = uploadRes.data.imageUrl; // Assuming backend returns { imageUrl: '...' }
-        // toast.success('Profile picture uploaded!'); // If using react-hot-toast
+        uploadedImageUrl = uploadRes.data.imageUrl;
       }
 
-      // Step 2: Update user profile with new data, including the (potentially new) image URL
-      const { data } = await api.put('/user/profile', {
+      // Step 2: Update user profile with new data
+      await api.put('/user/profile', {
         username: formData.username,
         email: formData.email,
-        profilePicture: uploadedImageUrl, // Send the new or existing image URL
+        profilePicture: uploadedImageUrl,
       });
 
-      setProfile(data);
+      // Step 3: Refresh profile via auth context
+      await fetchProfile();
+
+      // Step 4: Update local state
       const updatedOriginalData = {
-        username: data.username,
-        email: data.email,
-        profilePicture: data.profilePicture || ''
+        username: user.username,
+        email: user.email,
+        profilePicture: user.profilePicture || ''
       };
       setOriginalFormData(updatedOriginalData);
-      setFormData(updatedOriginalData); // Update formData with server's response
-      setFilePreviewUrl(data.profilePicture || null); // Update preview from server response
-      setSelectedFile(null); // Clear selected file after successful upload
-      setIsEditing(false); // Exit edit mode
-      alert('Profile updated successfully!'); // Simple alert for success
-      // toast.success('Profile updated successfully!'); // If using react-hot-toast
+      setFormData(updatedOriginalData);
+      setFilePreviewUrl(user.profilePicture || null);
+      setSelectedFile(null);
+      setIsEditing(false);
 
+      alert('Profile updated successfully!');
     } catch (err) {
       console.error("Error updating profile:", err);
       const errorMessage = err.response?.data?.message || 'Failed to update profile. Please try again.';
       setError(errorMessage);
-      alert('Failed to update profile: ' + errorMessage); // Simple alert for error
-      // toast.error('Failed to update profile: ' + errorMessage); // If using react-hot-toast
-    } finally {
-      setLoading(false); // End loading regardless of success or failure
+      alert('Failed to update profile: ' + errorMessage);
     }
   };
 
   // --- Conditional Rendering for Loading, Error, and No Profile Data ---
-  if (loading && !profile) // Only show loading if profile isn't loaded yet
+  if (authLoading) {
     return (
       <div
         className="text-center py-20 text-gray-700 font-semibold text-lg min-h-screen flex items-center justify-center"
@@ -172,18 +140,20 @@ const Profile = () => {
         Loading profile...
       </div>
     );
+  }
 
-  if (error && !isEditing && !loading) // Show global fetch error if not in edit mode and not loading
+  if (authError && !isEditing) {
     return (
       <div
         className="text-center py-10 text-red-600 font-bold text-lg bg-red-50 rounded-lg mx-auto max-w-md p-4 border border-red-200 mt-10 shadow-md"
         style={{ backgroundColor: theme.colors.background }}
       >
-        {error}
+        {authError}
       </div>
     );
+  }
 
-  if (!profile && !loading) // If no profile data after loading and no errors
+  if (!user) // If no user data after loading and no errors
     return (
       <div
         className="text-center py-10 text-gray-500 text-lg min-h-screen flex items-center justify-center"
@@ -195,16 +165,17 @@ const Profile = () => {
 
   return (
     <div
-      className="min-h-screen py-10 px-4 flex items-center justify-center"
+      className="min-h-screen py-4 px-2 flex items-center justify-center"
       style={{ backgroundColor: theme.colors.background, fontFamily: theme.fonts.body }}
     >
-      <div className="max-w-3xl w-full mx-auto bg-white shadow-xl rounded-xl p-8 transition-all duration-300">
-        <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4 sm:gap-0">
-          <div className="flex items-center gap-4 flex-col sm:flex-row text-center sm:text-left">
+      <div className="max-w-2xl w-full mx-auto shadow-xl rounded-xl p-4 transition-all duration-300"
+        style={{ background: `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 100%)`, borderRadius: theme.borderRadius }}>
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-3 gap-2 sm:gap-0">
+          <div className="flex items-center gap-2 flex-col sm:flex-row text-center sm:text-left">
             {/* Profile Picture Display (Conditional for editing vs. viewing) */}
             <div
-              className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold flex-shrink-0 relative overflow-hidden group"
-              style={{ backgroundColor: theme.colors.primary, color: theme.colors.secondary }}
+              className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0 relative overflow-hidden group border-4"
+              style={{ backgroundColor: theme.colors.secondary, color: theme.colors.primary, borderColor: theme.colors.primary, fontFamily: theme.fonts.heading }}
             >
               {filePreviewUrl ? (
                 <img
@@ -217,9 +188,10 @@ const Profile = () => {
                   }
                   alt="Profile"
                   className="w-full h-full object-cover"
+                  style={{ borderRadius: '50%' }}
                 />
               ) : (
-                profile?.username?.[0]?.toUpperCase() || 'U'
+                user?.username?.[0]?.toUpperCase() || 'U'
               )}
               {isEditing && (
                 <button
@@ -227,33 +199,35 @@ const Profile = () => {
                   onClick={() => fileInputRef.current.click()}
                   className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity rounded-full text-sm"
                   title="Upload New Picture"
+                  style={{ fontFamily: theme.fonts.body }}
                 >
                   <Upload size={24} />
                 </button>
               )}
             </div>
             <div>
-              <h2 className="text-2xl font-semibold" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading }}>User Profile</h2>
-              <p className="text-sm text-gray-600" style={{ color: theme.colors.textSecondary }}>Manage your account details</p>
+              <h2 className="text-xl font-semibold mb-0.5" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading }}>User Profile</h2>
+              <p className="text-xs" style={{ color: theme.colors.textSecondary, fontFamily: theme.fonts.body }}>Manage your account details</p>
             </div>
           </div>
           {/* Edit/Cancel button */}
           <button
             onClick={handleEditToggle}
-            className="p-2 rounded-full transition-colors duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300"
+            className="p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2"
+            style={{ backgroundColor: isEditing ? '#F8D7DA' : theme.colors.secondary, color: isEditing ? '#B26942' : theme.colors.text, border: `2px solid ${theme.colors.primary}` }}
             title={isEditing ? 'Cancel Edit' : 'Edit Profile'}
           >
             {isEditing ? <X size={24} className="text-red-500" /> : <Edit size={24} className="text-gray-500 hover:text-gray-700" />}
           </button>
         </div>
 
-        <hr className="mb-6 border-gray-200" />
+        <hr className="mb-3 border-[#B26942]" />
 
         {isEditing ? (
           // Form for editing profile
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {error && ( // Display form-specific error if submission fails
-              <p className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-center border border-red-200 shadow-sm">
+              <p className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-center border border-red-200 shadow-sm" style={{ fontFamily: theme.fonts.body }}>
                 {error}
               </p>
             )}
@@ -267,41 +241,42 @@ const Profile = () => {
             />
 
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700" style={{ color: theme.colors.textSecondary }}>Username</label>
+              <label htmlFor="username" className="block text-xs font-medium mb-0.5" style={{ color: theme.colors.textSecondary, fontFamily: theme.fonts.body }}>Username</label>
               <input
                 type="text"
                 id="username"
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-opacity-50 transition-all duration-200"
-                style={{ borderRadius: theme.borderRadius, focus: { ringColor: theme.colors.primary } }}
+                className="mt-0.5 block w-full rounded-lg border px-3 py-1 text-xs focus:ring-2 focus:ring-opacity-50 transition-all duration-200"
+                style={{ borderRadius: theme.borderRadius, borderColor: theme.colors.primary, fontFamily: theme.fonts.body, color: theme.colors.text }}
               />
             </div>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700" style={{ color: theme.colors.textSecondary }}>Email</label>
+              <label htmlFor="email" className="block text-xs font-medium mb-0.5" style={{ color: theme.colors.textSecondary, fontFamily: theme.fonts.body }}>Email</label>
               <input
                 type="email"
                 id="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-opacity-50 transition-all duration-200"
-                style={{ borderRadius: theme.borderRadius, focus: { ringColor: theme.colors.primary } }}
+                className="mt-0.5 block w-full rounded-lg border px-3 py-1 text-xs focus:ring-2 focus:ring-opacity-50 transition-all duration-200"
+                style={{ borderRadius: theme.borderRadius, borderColor: theme.colors.primary, fontFamily: theme.fonts.body, color: theme.colors.text }}
               />
             </div>
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={handleEditToggle}
-                className="px-5 py-2 text-sm rounded-md font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 shadow-sm"
+                className="px-3 py-1.5 text-xs rounded-md font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm"
+                style={{ backgroundColor: theme.colors.secondary, color: theme.colors.text, border: `1px solid ${theme.colors.primary}`, fontFamily: theme.fonts.body }}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 text-white text-sm rounded-md font-medium flex items-center gap-2 bg-[#1C1F43] hover:bg-[#3B3F4C] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1C1F43] shadow-md"
-                style={{ backgroundColor: theme.colors.primary }} // Apply primary theme color
+                className="px-3 py-1.5 text-white text-xs rounded-md font-medium flex items-center gap-1 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-md"
+                style={{ backgroundColor: theme.colors.primary, fontFamily: theme.fonts.body }}
               >
                 <Save size={16} /> {loading ? 'Saving...' : 'Save Changes'}
               </button>
@@ -309,18 +284,18 @@ const Profile = () => {
           </form>
         ) : (
           // Display profile details when not in edit mode
-          <div className="space-y-5 text-sm text-gray-800" style={{ color: theme.colors.text }}>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 px-3 bg-gray-50 rounded-lg shadow-sm">
-              <span className="font-semibold text-gray-600">Username:</span>
-              <span className="mt-1 sm:mt-0 font-medium">{profile.username}</span>
+          <div className="space-y-2 text-xs" style={{ color: theme.colors.text, fontFamily: theme.fonts.body }}>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 px-2 rounded-lg shadow-sm" style={{ backgroundColor: theme.colors.secondary, border: `1px solid ${theme.colors.primary}` }}>
+              <span className="font-semibold" style={{ color: theme.colors.textSecondary, fontFamily: theme.fonts.body }}>Username:</span>
+              <span className="mt-0.5 sm:mt-0 font-medium" style={{ color: theme.colors.text }}>{user.username}</span>
             </div>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 px-3 bg-gray-50 rounded-lg shadow-sm">
-              <span className="font-semibold text-gray-600">Email:</span>
-              <span className="mt-1 sm:mt-0 font-medium">{profile.email}</span>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 px-2 rounded-lg shadow-sm" style={{ backgroundColor: theme.colors.secondary, border: `1px solid ${theme.colors.primary}` }}>
+              <span className="font-semibold" style={{ color: theme.colors.textSecondary, fontFamily: theme.fonts.body }}>Email:</span>
+              <span className="mt-0.5 sm:mt-0 font-medium" style={{ color: theme.colors.text }}>{user.email}</span>
             </div>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 px-3 bg-gray-50 rounded-lg shadow-sm">
-              <span className="font-semibold text-gray-600">Role:</span>
-              <span className="mt-1 sm:mt-0 font-medium capitalize">{profile.role}</span>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 px-2 rounded-lg shadow-sm" style={{ backgroundColor: theme.colors.secondary, border: `1px solid ${theme.colors.primary}` }}>
+              <span className="font-semibold" style={{ color: theme.colors.textSecondary, fontFamily: theme.fonts.body }}>Role:</span>
+              <span className="mt-0.5 sm:mt-0 font-medium capitalize" style={{ color: theme.colors.text }}>{user.role}</span>
             </div>
           </div>
         )}

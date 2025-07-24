@@ -17,7 +17,7 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#F2E1C1]">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-300">
       <h2 className="text-2xl font-bold mb-6 text-[#1C1F43]">Complete Your Payment</h2>
       <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-md">
         <p className="mb-2 font-semibold">Order ID: <span className="font-mono">{order._id}</span></p>

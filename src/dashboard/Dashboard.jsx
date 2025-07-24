@@ -1,10 +1,11 @@
-import React from 'react';
-import theme from '/src/theme.js';
+import React, { Suspense, lazy } from 'react';
+import theme from '../theme.js';
 import { FaUser, FaSignOutAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import AdminDashboard from './AdminDashboard';
 import TailorDashboard from './TailorDashboard';
 import CustomerDashboard from './UserDashboard';
+
+const AdminDashboard = lazy(() => import('./AdminDashboard.jsx'));
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -24,11 +25,18 @@ const Dashboard = () => {
   const renderDashboardContent = () => {
     switch (user.role) {
       case 'admin':
-        navigate('/admin');
+        return (
+          <Suspense fallback={<div>Loading...</div>}>
+            <AdminDashboard />
+          </Suspense>
+        );
       case 'tailor':
-        navigate('/tailor');
+        return <TailorDashboard />;
+      case 'customer':
+        return <CustomerDashboard />;
       default:
         navigate('/');
+        return null;
     }
   };
 

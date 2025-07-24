@@ -29,7 +29,7 @@ const BlogPreview = () => {
   const categories = ['all', ...Array.from(new Set(blogPosts.map(a => a.category).filter(Boolean)))];
 
   return (
-    <section className="bg-[#FDFBF6] py-16">
+    <section className="bg-white py-16">
       <div className="container mx-auto px-4 max-w-6xl">
         <h2 className="text-4xl md:text-5xl font-extrabold text-neutral-800 mb-4 tracking-tight text-center">
           Latest <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-700">Insights</span>
